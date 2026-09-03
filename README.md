@@ -57,7 +57,8 @@ npm run lint       # oxlint
 ```
 src/
   types/       Project, Visit, Item, Photo, AudioNote — the Phase 1 data model
-  db/          Dexie schema (db.ts) and per-entity data access (projects.ts, …)
+  db/          Dexie schema (db.ts) and per-entity data access (projects.ts, …, plus
+               itemDrafts.ts for the item-capture crash-recovery snapshot)
   lib/         small framework-free helpers — id gen, item-type metadata, detail-ref parsing,
                remembered engineer defaults, photo downscale/orientation/thumbnail, audio mime
                detection, and the report generation pipeline (reportGeneration.ts +
@@ -105,13 +106,17 @@ Tracking the Phase 1 brief's build order:
       (service worker precaches), go fully offline (`context.setOffline(true)`), then complete an
       entire visit — project, visit, an item with a photo *and* a voice memo, generate and
       download the `.docx` — with zero network requests succeeding at any point.
-- [ ] 8. Optional: transcription endpoint and post-processing
+- [~] 8. Transcription endpoint and post-processing — skipped for now per feedback (optional
+      in the brief; revisit if it turns out to be needed).
 
-## Known gap
-
-The brief's Field Constraints section (§8) calls for autosaving item drafts to Dexie on every
-field change, so a dropped phone or force-quit mid-item doesn't lose it (also acceptance
-criterion #7). Not yet built — today an item only reaches Dexie on Save & Add Another / Save &
-Close. Worth doing before real field use; scope is roughly on par with the photo/audio
-pending-state work in steps 3 and 6 (a Dexie-backed draft slot per in-progress item, debounced
-autosave, and a "recover this draft?" prompt on reopening the form).
+**Item draft autosave / crash recovery** (brief §8, acceptance criterion #7 — "force-quit
+mid-item: the draft is recovered on relaunch"), flagged as a gap after step 7, is now built too:
+Item Capture debounce-autosaves a full snapshot (typed fields, photos, voice memo — everything,
+via the same Dexie-native-Blob approach as the rest of the form) to a dedicated `itemDrafts`
+table on every change. A deliberate navigation away (Save, or the back link) clears it; a crash
+or force-quit skips that cleanup, so the draft is offered for recovery — with a "Recovered an
+unsaved draft" banner and a Discard option — the next time that item's form opens, new or
+mid-edit. Verified by literally closing the page mid-type (no React cleanup runs, the same as a
+real crash) and confirming the reopened form recovers exactly what was typed, for both new items
+and edits, while deliberate navigation and a real save each correctly leave nothing behind to
+recover.
