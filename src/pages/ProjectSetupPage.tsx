@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { GridLinesEditor } from '../components/project/GridLinesEditor'
-import { SheetIndexEditor } from '../components/project/SheetIndexEditor'
 import { Button } from '../components/ui/Button'
 import { TextField } from '../components/ui/Field'
 import { Section } from '../components/ui/Section'
@@ -14,6 +12,7 @@ import {
   emptyProjectDraft,
   updateProject,
 } from '../db/projects'
+import { listVisitsByProject } from '../db/visits'
 import type { Project } from '../types/project'
 
 function toDraft(project: Project): ProjectDraft {
@@ -58,7 +57,12 @@ function ProjectForm({ id, initial }: ProjectFormProps) {
 
   async function handleDelete() {
     if (!id) return
-    if (!window.confirm(`Delete "${draft.name || 'this project'}"? This cannot be undone.`)) return
+    if (
+      !window.confirm(
+        `Delete "${draft.name || 'this project'}"? This also deletes its visits, items, photos, and audio notes. This cannot be undone.`,
+      )
+    )
+      return
     setDeleting(true)
     try {
       await deleteProject(id)
@@ -116,18 +120,6 @@ function ProjectForm({ id, initial }: ProjectFormProps) {
         </div>
       </Section>
 
-      <Section title="Grid setup" description="Powers the two-tap grid-reference picker in item capture.">
-        <GridLinesEditor
-          gridLetters={draft.gridLetters}
-          gridNumbers={draft.gridNumbers}
-          onChange={(next) => patch(next)}
-        />
-      </Section>
-
-      <Section title="Sheet index" description="Powers detail-reference autocomplete and validation.">
-        <SheetIndexEditor sheets={draft.sheets} onChange={(sheets) => patch({ sheets })} />
-      </Section>
-
       <div className="flex items-center justify-between gap-3">
         <Button onClick={handleSave} disabled={saving || !draft.jobNumber || !draft.name}>
           {saving ? 'Saving…' : isNew ? 'Create project' : 'Save changes'}
@@ -138,7 +130,46 @@ function ProjectForm({ id, initial }: ProjectFormProps) {
           </Button>
         )}
       </div>
+
+      {!isNew && <VisitsSection projectId={id} />}
     </div>
+  )
+}
+
+function VisitsSection({ projectId }: { projectId: string }) {
+  const visits = useLiveQuery(() => listVisitsByProject(projectId), [projectId])
+
+  return (
+    <Section title="Visits">
+      <div className="-mt-2 mb-2 flex justify-end">
+        <Link
+          to={`/projects/${projectId}/visits/new`}
+          className="flex min-h-12 items-center rounded-lg bg-blue-600 px-4 py-3 text-base font-semibold text-white shadow-sm active:bg-blue-700"
+        >
+          + New Visit
+        </Link>
+      </div>
+
+      {visits === undefined && <p className="text-slate-500">Loading…</p>}
+      {visits?.length === 0 && <p className="text-sm text-slate-500">No visits yet.</p>}
+
+      <ul className="space-y-2">
+        {visits?.map((visit) => (
+          <li key={visit.id}>
+            <Link
+              to={`/visits/${visit.id}`}
+              className="block rounded-lg border border-slate-200 bg-white p-3 active:bg-slate-50"
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="font-semibold text-slate-900">Field Report #{visit.reportNumber}</span>
+                <span className="shrink-0 text-sm text-slate-500">{visit.visitDate}</span>
+              </div>
+              <div className="truncate text-sm text-slate-500">{visit.purpose || 'No purpose set'}</div>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Section>
   )
 }
 
