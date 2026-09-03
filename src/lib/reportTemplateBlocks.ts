@@ -1,6 +1,7 @@
 import type { Item } from '../types/item'
 import type { Attendee } from '../types/visit'
 import { applyTwoSpaceRule } from './houseStyle'
+import { itemTypeMeta } from './itemTypes'
 import { escapeXml } from './xmlEscape'
 
 /**
@@ -50,6 +51,10 @@ const ITEM_PPR =
   '<w:pPr><w:widowControl w:val="0"/><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr>'
 const ITEM_RPR =
   '<w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>'
+// Same run properties as ITEM_RPR, plus bold — used for the item-type label
+// ("DEFICIENCY:", "REQUIRES CCD:", …) that leads each item's body text.
+const ITEM_LABEL_RPR =
+  '<w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:b/><w:bCs/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>'
 const LEADING_SPACER_PPR =
   '<w:pPr><w:widowControl w:val="0"/><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr></w:pPr>'
 
@@ -64,8 +69,13 @@ export function buildItemsBlockXml(items: Item[]): string {
   const parts = [LEADING_SPACER]
   for (const item of items) {
     const body = escapeXml(applyTwoSpaceRule(item.bodyText.trim()))
+    const label = escapeXml(itemTypeMeta(item.itemType).label.toUpperCase())
     parts.push(
-      `<w:p>${ITEM_PPR}<w:r>${ITEM_RPR}<w:t xml:space="preserve">${item.sequenceNumber}.) ${body}</w:t></w:r></w:p>`,
+      `<w:p>${ITEM_PPR}` +
+        `<w:r>${ITEM_RPR}<w:t xml:space="preserve">${item.sequenceNumber}.) </w:t></w:r>` +
+        `<w:r>${ITEM_LABEL_RPR}<w:t xml:space="preserve">${label}: </w:t></w:r>` +
+        `<w:r>${ITEM_RPR}<w:t xml:space="preserve">${body}</w:t></w:r>` +
+        `</w:p>`,
     )
     parts.push(ITEM_SPACER)
   }
