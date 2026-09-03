@@ -1,5 +1,6 @@
 import { newId } from '../lib/id'
 import type { Item } from '../types/item'
+import { type PendingAudioNote, reconcileAudioNote } from './audioNotes'
 import { db } from './db'
 import { type PendingPhoto, reconcilePhotos } from './photos'
 
@@ -46,10 +47,11 @@ export async function updateItem(id: string, draft: ItemDraft): Promise<void> {
 }
 
 /**
- * Saves an item and its photos together, in one transaction: photos are
- * reconciled against the item's (possibly not-yet-existing) id first, then
- * the item is created or updated with the resulting photoIds. Nothing is
- * left half-written if either half fails.
+ * Saves an item, its photos, and its voice memo together, in one
+ * transaction: photos and the audio note are reconciled against the
+ * item's (possibly not-yet-existing) id first, then the item is created
+ * or updated with the resulting photoIds/audioId. Nothing is left
+ * half-written if any part fails.
  */
 export async function saveItem(
   visitId: string,
@@ -57,11 +59,14 @@ export async function saveItem(
   draft: ItemDraft,
   photos: PendingPhoto[],
   originalPhotoIds: string[],
+  audioNote: PendingAudioNote | null,
+  originalAudioId: string | undefined,
 ): Promise<Item> {
-  return db.transaction('rw', db.items, db.photos, async () => {
+  return db.transaction('rw', db.items, db.photos, db.audioNotes, async () => {
     const finalItemId = itemId ?? newId()
     const photoIds = await reconcilePhotos(visitId, finalItemId, photos, originalPhotoIds)
-    const fullDraft: ItemDraft = { ...draft, photoIds }
+    const audioId = await reconcileAudioNote(finalItemId, audioNote, originalAudioId)
+    const fullDraft: ItemDraft = { ...draft, photoIds, audioId }
 
     if (itemId) {
       await updateItem(itemId, fullDraft)

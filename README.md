@@ -31,6 +31,10 @@ nothing downstream (Word included) needs to interpret it.
   inserted by hand-splicing OOXML into the rendered zip instead — see
   [`docs/report-generation.md`](docs/report-generation.md).
 
+Voice memos use the browser's own `MediaRecorder` + Web Audio (`AnalyserNode` for the live level
+meter) — no dependency needed. Mime type is feature-detected (opus-in-webm where supported,
+mp4 on Safari), and microphone access is requested on first hold, not at app launch.
+
 Later phases add `react-zoom-pan-pinch`, `vite-plugin-pwa`, and optionally a single serverless
 transcription endpoint — see the Phase 1 brief for the full stack and build order.
 
@@ -51,13 +55,14 @@ src/
   types/       Project, Visit, Item, Photo, AudioNote — the Phase 1 data model
   db/          Dexie schema (db.ts) and per-entity data access (projects.ts, …)
   lib/         small framework-free helpers — id gen, item-type metadata, detail-ref parsing,
-               remembered engineer defaults, photo downscale/orientation/thumbnail, and the
-               report generation pipeline (reportGeneration.ts + reportDates/houseStyle/
-               reportTemplateBlocks/reportImages/xmlEscape/downloadBlob)
+               remembered engineer defaults, photo downscale/orientation/thumbnail, audio mime
+               detection, and the report generation pipeline (reportGeneration.ts +
+               reportDates/houseStyle/reportTemplateBlocks/reportImages/xmlEscape/downloadBlob)
   components/
     ui/        generic form primitives (Field, Button, Section)
     visit/     visit-setup-specific editors (attendees)
-    item/      item-capture-specific editors (item type chips, measurements, photo capture)
+    item/      item-capture-specific editors (item type chips, measurements, photo capture,
+               hold-to-record voice memo)
   pages/       route-level screens
 public/
   templates/   the tagged report template docxtemplater renders against (generated —
@@ -87,6 +92,9 @@ Tracking the Phase 1 brief's build order:
 - [x] 5. docx template and client-side generation — first end-to-end milestone. See
       [`docs/report-generation.md`](docs/report-generation.md) for how the template is
       prepared and how generation-time code fills it, including the photo appendix.
-- [ ] 6. Voice memo record, store, play back
+- [x] 6. Voice memo record, store, play back — hold-to-record with slide-up-to-lock,
+      a live amplitude meter, haptic pulses, and a 1-second accidental-tap discard.
+      Optional throughout; hidden entirely (not disabled) if the mic is denied or
+      unavailable, and the typed body-text field is always the complete path on its own.
 - [ ] 7. PWA shell, service worker, install, offline verification
 - [ ] 8. Optional: transcription endpoint and post-processing

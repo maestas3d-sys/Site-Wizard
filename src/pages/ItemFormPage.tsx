@@ -4,8 +4,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ItemTypeChips } from '../components/item/ItemTypeChips'
 import { MeasurementsEditor } from '../components/item/MeasurementsEditor'
 import { PhotoCapture } from '../components/item/PhotoCapture'
+import { VoiceMemoRecorder } from '../components/item/VoiceMemoRecorder'
 import { Button } from '../components/ui/Button'
 import { TextAreaField, TextField } from '../components/ui/Field'
+import { type PendingAudioNote, loadPendingAudioNote } from '../db/audioNotes'
 import { db } from '../db/db'
 import { type ItemDraft, deleteItem, emptyItemDraft, saveItem } from '../db/items'
 import { type PendingPhoto, loadPendingPhotos } from '../db/photos'
@@ -24,24 +26,34 @@ interface ItemFormProps {
   projectId: string
   initial: ItemDraft
   initialPhotos: PendingPhoto[]
+  initialAudioNote: PendingAudioNote | null
   elementPresets: string[]
 }
 
 /**
- * The screen that matters (§4.3). Voice memo isn't wired up yet — that's
- * build-order step 6 — everything else from the typed capture flow is
- * here, including "Save & Add Another" looping straight back to a blank
- * item (photos included).
+ * The screen that matters (§4.3) — typed fields, photos, and the optional
+ * voice memo, with "Save & Add Another" looping straight back to a blank
+ * item.
  */
-function ItemForm({ visitId, itemId, projectId, initial, initialPhotos, elementPresets }: ItemFormProps) {
+function ItemForm({
+  visitId,
+  itemId,
+  projectId,
+  initial,
+  initialPhotos,
+  initialAudioNote,
+  elementPresets,
+}: ItemFormProps) {
   const navigate = useNavigate()
   const isNew = !itemId
   const [draft, setDraft] = useState<ItemDraft>(initial)
   const [detailRefsText, setDetailRefsText] = useState(() => formatDetailRefsForInput(initial.detailRefs))
   const [photos, setPhotos] = useState<PendingPhoto[]>(initialPhotos)
-  // What was actually in Dexie when this form mounted — reconcilePhotos
-  // needs this to know which photos the user removed.
+  const [audioNote, setAudioNote] = useState<PendingAudioNote | null>(initialAudioNote)
+  // What was actually in Dexie when this form mounted — reconcilePhotos and
+  // reconcileAudioNote need this to know what the user removed.
   const originalPhotoIds = useRef(initialPhotos.map((p) => p.id))
+  const originalAudioId = useRef(initialAudioNote?.id)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -52,7 +64,15 @@ function ItemForm({ visitId, itemId, projectId, initial, initialPhotos, elementP
   async function persist(): Promise<Item> {
     const finalDraft: ItemDraft = { ...draft, detailRefs: parseDetailRefsInput(detailRefsText) }
     await addElementPreset(projectId, draft.elementRef)
-    return saveItem(visitId, itemId, finalDraft, photos, originalPhotoIds.current)
+    return saveItem(
+      visitId,
+      itemId,
+      finalDraft,
+      photos,
+      originalPhotoIds.current,
+      audioNote,
+      originalAudioId.current,
+    )
   }
 
   async function handleSaveAndClose() {
@@ -73,6 +93,8 @@ function ItemForm({ visitId, itemId, projectId, initial, initialPhotos, elementP
       setDetailRefsText('')
       setPhotos([])
       originalPhotoIds.current = []
+      setAudioNote(null)
+      originalAudioId.current = undefined
     } finally {
       setSaving(false)
     }
@@ -122,6 +144,8 @@ function ItemForm({ visitId, itemId, projectId, initial, initialPhotos, elementP
           <option key={preset} value={preset} />
         ))}
       </datalist>
+
+      <VoiceMemoRecorder value={audioNote} onChange={setAudioNote} />
 
       <div>
         <span className="mb-1 block text-sm font-semibold text-slate-700">Item type</span>
@@ -200,10 +224,19 @@ export function ItemFormPage() {
     () => (isNew ? [] : existingItem ? loadPendingPhotos(existingItem.photoIds) : undefined),
     [isNew, existingItem],
   )
+  // null is a valid loaded state here (no audio note) — undefined means "not loaded yet".
+  const initialAudioNote = useLiveQuery(
+    () => (isNew ? null : existingItem ? loadPendingAudioNote(existingItem.audioId) : undefined),
+    [isNew, existingItem],
+  )
 
   const ready = isNew
     ? visit !== undefined && project !== undefined
-    : existingItem !== undefined && visit !== undefined && project !== undefined && initialPhotos !== undefined
+    : existingItem !== undefined &&
+      visit !== undefined &&
+      project !== undefined &&
+      initialPhotos !== undefined &&
+      initialAudioNote !== undefined
 
   return (
     <div className="mx-auto max-w-2xl p-4 pb-4">
@@ -236,22 +269,30 @@ export function ItemFormPage() {
           projectId={project.id}
           initial={emptyItemDraft()}
           initialPhotos={[]}
+          initialAudioNote={null}
           elementPresets={project.elementPresets}
         />
       )}
 
-      {ready && !isNew && existingItem && visit && project && initialPhotos && (
-        // Keyed so navigating between two items' edit forms remounts fresh.
-        <ItemForm
-          key={existingItem.id}
-          visitId={visit.id}
-          itemId={existingItem.id}
-          projectId={project.id}
-          initial={toItemDraft(existingItem)}
-          initialPhotos={initialPhotos}
-          elementPresets={project.elementPresets}
-        />
-      )}
+      {ready &&
+        !isNew &&
+        existingItem &&
+        visit &&
+        project &&
+        initialPhotos &&
+        initialAudioNote !== undefined && (
+          // Keyed so navigating between two items' edit forms remounts fresh.
+          <ItemForm
+            key={existingItem.id}
+            visitId={visit.id}
+            itemId={existingItem.id}
+            projectId={project.id}
+            initial={toItemDraft(existingItem)}
+            initialPhotos={initialPhotos}
+            initialAudioNote={initialAudioNote}
+            elementPresets={project.elementPresets}
+          />
+        )}
     </div>
   )
 }
