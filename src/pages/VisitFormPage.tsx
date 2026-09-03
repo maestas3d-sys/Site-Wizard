@@ -86,7 +86,7 @@ function VisitForm({ projectId, visitId, initial, reportNumberPreview }: VisitFo
           label="Purpose"
           value={draft.purpose}
           onChange={(e) => patch({ purpose: e.target.value })}
-          placeholder="review the P/T cables at the tennis courts prior to pouring concrete"
+          placeholder="review framing progress prior to pouring concrete"
         />
         <TextAreaField
           label="General state (optional)"
@@ -106,13 +106,13 @@ function VisitForm({ projectId, visitId, initial, reportNumberPreview }: VisitFo
             label="Name"
             value={draft.engineerName}
             onChange={(e) => patch({ engineerName: e.target.value })}
-            placeholder="David Maestas"
+            placeholder="Name"
           />
           <TextField
             label="Title"
             value={draft.engineerTitle}
             onChange={(e) => patch({ engineerTitle: e.target.value })}
-            placeholder="Principal"
+            placeholder="Title"
           />
           <TextField
             label="Credential"
@@ -125,7 +125,7 @@ function VisitForm({ projectId, visitId, initial, reportNumberPreview }: VisitFo
           label="Next observation"
           value={draft.nextObservation}
           onChange={(e) => patch({ nextObservation: e.target.value })}
-          placeholder="Prior to pour-strip concrete pour. Tentatively 10/20/25."
+          placeholder="Prior to next phase of work. Tentatively 00/00/00."
         />
       </Section>
 

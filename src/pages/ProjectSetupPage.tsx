@@ -80,20 +80,20 @@ function ProjectForm({ id, initial }: ProjectFormProps) {
             label="Job number"
             value={draft.jobNumber}
             onChange={(e) => patch({ jobNumber: e.target.value })}
-            placeholder="24-087"
+            placeholder="00-000"
           />
           <TextField
             label="Project name"
             value={draft.name}
             onChange={(e) => patch({ name: e.target.value })}
-            placeholder="MHHS Athletic Improvements"
+            placeholder="Project Name"
           />
         </div>
         <TextField
           label="Location"
           value={draft.location}
           onChange={(e) => patch({ location: e.target.value })}
-          placeholder="San Marcos, CA"
+          placeholder="City, ST"
         />
       </Section>
 
@@ -102,20 +102,20 @@ function ProjectForm({ id, initial }: ProjectFormProps) {
           label="Client firm"
           value={draft.clientFirm}
           onChange={(e) => patch({ clientFirm: e.target.value })}
-          placeholder="tBP/Architecture"
+          placeholder="Client Firm"
         />
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField
             label="Client city"
             value={draft.clientCity}
             onChange={(e) => patch({ clientCity: e.target.value })}
-            placeholder="Solana Beach, CA"
+            placeholder="City, ST"
           />
           <TextField
             label="Attn"
             value={draft.clientAttn}
             onChange={(e) => patch({ clientAttn: e.target.value })}
-            placeholder="Chuck Forte"
+            placeholder="Name"
           />
         </div>
       </Section>

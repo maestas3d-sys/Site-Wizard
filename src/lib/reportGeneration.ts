@@ -11,7 +11,10 @@ import { injectPhotos } from './reportImages'
 import { formatReportDate, formatVisitDateLong } from './reportDates'
 import { buildItemsBlockXml, buildPresentBlockXml } from './reportTemplateBlocks'
 
-const TEMPLATE_URL = '/templates/field-report-template.docx'
+// import.meta.env.BASE_URL is Vite's configured `base`, always ending in
+// "/" — a hardcoded leading "/" here would 404 under GitHub Pages, which
+// serves this app from a /Site-Wizard/ subpath rather than the root.
+const TEMPLATE_URL = `${import.meta.env.BASE_URL}templates/field-report-template.docx`
 
 export type ClosingVariant = 'conforms' | 'work-in-progress'
 
