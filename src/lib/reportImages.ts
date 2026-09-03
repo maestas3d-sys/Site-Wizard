@@ -85,6 +85,12 @@ export async function injectPhotos(zip: PizZip, photos: Photo[]): Promise<void> 
     const caption = photo.caption.trim()
     const label = `Photo #${i + 1}${caption ? `: ${escapeXml(caption)}` : ''}`
     const pageBreak = '<w:p><w:r><w:br w:type="page"/></w:r></w:p>'
+    // Three blank body-text-sized lines so the caption doesn't sit tight
+    // against the top margin on a fresh page.
+    const topSpacer =
+      '<w:p><w:pPr><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:sz w:val="22"/></w:rPr></w:pPr></w:p>'.repeat(
+        3,
+      )
     const captionPara =
       '<w:p><w:pPr><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:b/><w:sz w:val="22"/></w:rPr></w:pPr>' +
       `<w:r><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:b/><w:sz w:val="22"/></w:rPr><w:t xml:space="preserve">${label}</w:t></w:r></w:p>`
@@ -92,7 +98,7 @@ export async function injectPhotos(zip: PizZip, photos: Photo[]): Promise<void> 
     // header logo's own (small, sequential) id.
     const imagePara = `<w:p>${buildDrawingXml(relId, 1000 + i, width, height)}</w:p>`
 
-    paragraphs.push(pageBreak, captionPara, imagePara)
+    paragraphs.push(pageBreak, topSpacer, captionPara, imagePara)
   }
 
   zip.file(relsPath, relsXml)
