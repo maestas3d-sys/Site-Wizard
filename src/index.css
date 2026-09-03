@@ -6,6 +6,16 @@
 
 body {
   margin: 0;
+  /* index.html sets viewport-fit=cover (needed for a true full-bleed
+     background on notched phones, and for the standalone/installed app),
+     which pulls content edge-to-edge under the status bar and home
+     indicator unless something pads it back out — this is that padding.
+     env() is 0 on any device without an inset, so this is a no-op
+     everywhere else. */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
   /* Direct sunlight / gloved-hand use downstream (capture screens) needs high
      contrast and no light-gray-on-white; this base keeps body text dark. */
   @apply bg-slate-100 text-slate-900 antialiased;
