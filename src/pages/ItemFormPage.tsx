@@ -1,19 +1,15 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ItemTypeChips } from '../components/item/ItemTypeChips'
 import { MeasurementsEditor } from '../components/item/MeasurementsEditor'
+import { PhotoCapture } from '../components/item/PhotoCapture'
 import { Button } from '../components/ui/Button'
 import { TextAreaField, TextField } from '../components/ui/Field'
 import { db } from '../db/db'
+import { type ItemDraft, deleteItem, emptyItemDraft, saveItem } from '../db/items'
+import { type PendingPhoto, loadPendingPhotos } from '../db/photos'
 import { addElementPreset } from '../db/projects'
-import {
-  type ItemDraft,
-  createItem,
-  deleteItem,
-  emptyItemDraft,
-  updateItem,
-} from '../db/items'
 import { formatDetailRefsForInput, parseDetailRefsInput } from '../lib/detailRefs'
 import type { Item } from '../types/item'
 
@@ -27,20 +23,25 @@ interface ItemFormProps {
   itemId: string | undefined
   projectId: string
   initial: ItemDraft
+  initialPhotos: PendingPhoto[]
   elementPresets: string[]
 }
 
 /**
- * The screen that matters (§4.3). Photos and voice memo aren't wired up yet
- * — those are build-order steps 3 and 6 — everything else from the typed
- * capture flow is here, including "Save & Add Another" looping straight
- * back to a blank item.
+ * The screen that matters (§4.3). Voice memo isn't wired up yet — that's
+ * build-order step 6 — everything else from the typed capture flow is
+ * here, including "Save & Add Another" looping straight back to a blank
+ * item (photos included).
  */
-function ItemForm({ visitId, itemId, projectId, initial, elementPresets }: ItemFormProps) {
+function ItemForm({ visitId, itemId, projectId, initial, initialPhotos, elementPresets }: ItemFormProps) {
   const navigate = useNavigate()
   const isNew = !itemId
   const [draft, setDraft] = useState<ItemDraft>(initial)
   const [detailRefsText, setDetailRefsText] = useState(() => formatDetailRefsForInput(initial.detailRefs))
+  const [photos, setPhotos] = useState<PendingPhoto[]>(initialPhotos)
+  // What was actually in Dexie when this form mounted — reconcilePhotos
+  // needs this to know which photos the user removed.
+  const originalPhotoIds = useRef(initialPhotos.map((p) => p.id))
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -48,14 +49,10 @@ function ItemForm({ visitId, itemId, projectId, initial, elementPresets }: ItemF
     setDraft((d) => ({ ...d, ...fields }))
   }
 
-  async function persist(): Promise<void> {
+  async function persist(): Promise<Item> {
     const finalDraft: ItemDraft = { ...draft, detailRefs: parseDetailRefsInput(detailRefsText) }
     await addElementPreset(projectId, draft.elementRef)
-    if (isNew) {
-      await createItem(visitId, finalDraft)
-    } else {
-      await updateItem(itemId, finalDraft)
-    }
+    return saveItem(visitId, itemId, finalDraft, photos, originalPhotoIds.current)
   }
 
   async function handleSaveAndClose() {
@@ -74,6 +71,8 @@ function ItemForm({ visitId, itemId, projectId, initial, elementPresets }: ItemF
       await persist()
       setDraft(emptyItemDraft())
       setDetailRefsText('')
+      setPhotos([])
+      originalPhotoIds.current = []
     } finally {
       setSaving(false)
     }
@@ -146,6 +145,11 @@ function ItemForm({ visitId, itemId, projectId, initial, elementPresets }: ItemF
       />
 
       <div>
+        <span className="mb-1 block text-sm font-semibold text-slate-700">Photos</span>
+        <PhotoCapture photos={photos} onChange={setPhotos} />
+      </div>
+
+      <div>
         <span className="mb-1 block text-sm font-semibold text-slate-700">Measurements (optional)</span>
         <MeasurementsEditor
           measurements={draft.measurements}
@@ -192,10 +196,14 @@ export function ItemFormPage() {
 
   const visit = useLiveQuery(() => (visitId ? db.visits.get(visitId) : undefined), [visitId])
   const project = useLiveQuery(() => (visit ? db.projects.get(visit.projectId) : undefined), [visit])
+  const initialPhotos = useLiveQuery(
+    () => (isNew ? [] : existingItem ? loadPendingPhotos(existingItem.photoIds) : undefined),
+    [isNew, existingItem],
+  )
 
   const ready = isNew
     ? visit !== undefined && project !== undefined
-    : existingItem !== undefined && visit !== undefined && project !== undefined
+    : existingItem !== undefined && visit !== undefined && project !== undefined && initialPhotos !== undefined
 
   return (
     <div className="mx-auto max-w-2xl p-4 pb-4">
@@ -227,11 +235,12 @@ export function ItemFormPage() {
           itemId={undefined}
           projectId={project.id}
           initial={emptyItemDraft()}
+          initialPhotos={[]}
           elementPresets={project.elementPresets}
         />
       )}
 
-      {ready && !isNew && existingItem && visit && project && (
+      {ready && !isNew && existingItem && visit && project && initialPhotos && (
         // Keyed so navigating between two items' edit forms remounts fresh.
         <ItemForm
           key={existingItem.id}
@@ -239,6 +248,7 @@ export function ItemFormPage() {
           itemId={existingItem.id}
           projectId={project.id}
           initial={toItemDraft(existingItem)}
+          initialPhotos={initialPhotos}
           elementPresets={project.elementPresets}
         />
       )}

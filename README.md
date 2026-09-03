@@ -18,10 +18,16 @@ Phase 1 is solid.
 - **Dexie.js** — IndexedDB for all records and photo/audio blobs, single-user/single-device
 - React Router (`HashRouter`, so a static, backend-free deploy needs no server rewrite rules)
 - `dexie-react-hooks` for live-updating queries
+- `exifr` — reads EXIF DateTimeOriginal off captured/imported photos before they're re-encoded
 
-Later phases add `docxtemplater`, `exifr`, `react-zoom-pan-pinch`, `vite-plugin-pwa`, and
-optionally a single serverless transcription endpoint — see the Phase 1 brief for the full stack
-and build order.
+Photos are downscaled to a 2000px-long-edge JPEG plus a 300px thumbnail via
+`createImageBitmap(file, { imageOrientation: 'from-image' })` + canvas — EXIF orientation is
+corrected by physically rotating the pixels at that point, not by carrying the tag forward, so
+nothing downstream (Word included) needs to interpret it.
+
+Later phases add `docxtemplater`, `react-zoom-pan-pinch`, `vite-plugin-pwa`, and optionally a
+single serverless transcription endpoint — see the Phase 1 brief for the full stack and build
+order.
 
 ## Getting started
 
@@ -40,11 +46,11 @@ src/
   types/       Project, Visit, Item, Photo, AudioNote — the Phase 1 data model
   db/          Dexie schema (db.ts) and per-entity data access (projects.ts, …)
   lib/         small framework-free helpers (id gen, item-type metadata, detail-ref
-               parsing, remembered engineer defaults)
+               parsing, remembered engineer defaults, photo downscale/orientation/thumbnail)
   components/
     ui/        generic form primitives (Field, Button, Section)
     visit/     visit-setup-specific editors (attendees)
-    item/      item-capture-specific editors (item type chips, measurements)
+    item/      item-capture-specific editors (item type chips, measurements, photo capture)
   pages/       route-level screens
 ```
 
@@ -63,7 +69,7 @@ Tracking the Phase 1 brief's build order:
       that would blow Phase 1's no-AI scope and isn't reliable on hand-drawn/CAD grid labels
       anyway.
 - [x] 2. Visit creation, item capture with typed fields, item list
-- [ ] 3. Photo capture, downscale, EXIF orientation, thumbnails
+- [x] 3. Photo capture, downscale, EXIF orientation, thumbnails
 - [ ] 4. Detail reference parsing, autocomplete, validation — needs a source to validate
       against now that the sheet index is gone; revisit scope when this comes up
 - [ ] 5. docx template and client-side generation — first end-to-end milestone

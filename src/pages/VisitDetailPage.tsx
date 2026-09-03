@@ -120,6 +120,11 @@ export function VisitDetailPage() {
                       {meta.label}
                     </span>
                     {item.gridRef && <span className="text-xs text-slate-500">{item.gridRef}</span>}
+                    {item.photoIds.length > 0 && (
+                      <span className="text-xs text-slate-500">
+                        📷 {item.photoIds.length}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1 truncate text-sm text-slate-600">
                     {item.bodyText || <span className="text-slate-400">No body text yet</span>}
