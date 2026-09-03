@@ -1,15 +1,80 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useParams } from 'react-router-dom'
+import { Button } from '../components/ui/Button'
+import { Section } from '../components/ui/Section'
 import { db } from '../db/db'
 import { deleteItem, listItemsByVisit, moveItem } from '../db/items'
+import { downloadBlob } from '../lib/downloadBlob'
 import { itemTypeMeta } from '../lib/itemTypes'
+import { type ClosingVariant, generateReport } from '../lib/reportGeneration'
 
 function formatVisitDate(isoDate: string): string {
   // Append a time so the browser parses it in local time, not UTC — an
   // ISO date-only string ("2026-09-03") would otherwise read back as the
   // previous day in any zone west of UTC.
   return new Date(`${isoDate}T00:00:00`).toLocaleDateString(undefined, { dateStyle: 'medium' })
+}
+
+const CLOSING_VARIANT_OPTIONS: { value: ClosingVariant; label: string; hint: string }[] = [
+  {
+    value: 'work-in-progress',
+    label: 'Work in progress',
+    hint: 'Construction is ongoing — the usual case for a field visit.',
+  },
+  {
+    value: 'conforms',
+    label: 'Conforms',
+    hint: 'The observed work is complete and conforms to the construction documents.',
+  },
+]
+
+function ReportGenerationPanel({ visitId }: { visitId: string }) {
+  const [closingVariant, setClosingVariant] = useState<ClosingVariant>('work-in-progress')
+  const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleGenerate() {
+    setGenerating(true)
+    setError(null)
+    try {
+      const { blob, filename } = await generateReport({ visitId, closingVariant })
+      downloadBlob(blob, filename)
+    } catch (err) {
+      console.error('Report generation failed:', err)
+      setError(err instanceof Error ? err.message : 'Report generation failed.')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  return (
+    <Section title="Generate Report" description="Downloads an editable .docx — review it before it goes out.">
+      <div className="space-y-2">
+        {CLOSING_VARIANT_OPTIONS.map((option) => (
+          <label key={option.value} className="flex cursor-pointer items-start gap-2">
+            <input
+              type="radio"
+              name="closingVariant"
+              className="mt-1"
+              checked={closingVariant === option.value}
+              onChange={() => setClosingVariant(option.value)}
+            />
+            <span>
+              <span className="block text-sm font-medium text-slate-900">{option.label}</span>
+              <span className="block text-xs text-slate-500">{option.hint}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+
+      <Button onClick={handleGenerate} disabled={generating}>
+        {generating ? 'Generating…' : 'Generate .docx'}
+      </Button>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+    </Section>
+  )
 }
 
 export function VisitDetailPage() {
@@ -145,6 +210,10 @@ export function VisitDetailPage() {
           )
         })}
       </ul>
+
+      <div className="mt-6">
+        <ReportGenerationPanel visitId={visit.id} />
+      </div>
     </div>
   )
 }

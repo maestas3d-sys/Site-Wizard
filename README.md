@@ -25,9 +25,14 @@ Photos are downscaled to a 2000px-long-edge JPEG plus a 300px thumbnail via
 corrected by physically rotating the pixels at that point, not by carrying the tag forward, so
 nothing downstream (Word included) needs to interpret it.
 
-Later phases add `docxtemplater`, `react-zoom-pan-pinch`, `vite-plugin-pwa`, and optionally a
-single serverless transcription endpoint — see the Phase 1 brief for the full stack and build
-order.
+- `docxtemplater` + `pizzip` — client-side .docx generation against the real W+R template
+  (`public/templates/field-report-template.docx`). No image module: the free one pulls in an
+  unpatched critical-severity transitive vulnerability (xmldom, no fix available), so photos are
+  inserted by hand-splicing OOXML into the rendered zip instead — see
+  [`docs/report-generation.md`](docs/report-generation.md).
+
+Later phases add `react-zoom-pan-pinch`, `vite-plugin-pwa`, and optionally a single serverless
+transcription endpoint — see the Phase 1 brief for the full stack and build order.
 
 ## Getting started
 
@@ -45,13 +50,20 @@ npm run lint       # oxlint
 src/
   types/       Project, Visit, Item, Photo, AudioNote — the Phase 1 data model
   db/          Dexie schema (db.ts) and per-entity data access (projects.ts, …)
-  lib/         small framework-free helpers (id gen, item-type metadata, detail-ref
-               parsing, remembered engineer defaults, photo downscale/orientation/thumbnail)
+  lib/         small framework-free helpers — id gen, item-type metadata, detail-ref parsing,
+               remembered engineer defaults, photo downscale/orientation/thumbnail, and the
+               report generation pipeline (reportGeneration.ts + reportDates/houseStyle/
+               reportTemplateBlocks/reportImages/xmlEscape/downloadBlob)
   components/
     ui/        generic form primitives (Field, Button, Section)
     visit/     visit-setup-specific editors (attendees)
     item/      item-capture-specific editors (item type chips, measurements, photo capture)
   pages/       route-level screens
+public/
+  templates/   the tagged report template docxtemplater renders against (generated —
+               see docs/report-generation.md, do not hand-edit)
+scripts/
+  prepare-report-template.mjs   regenerates public/templates/ from docs/templates/
 ```
 
 **Grid picker / sheet index:** dropped from Project Setup — see the note in the build-order
@@ -70,9 +82,11 @@ Tracking the Phase 1 brief's build order:
       anyway.
 - [x] 2. Visit creation, item capture with typed fields, item list
 - [x] 3. Photo capture, downscale, EXIF orientation, thumbnails
-- [ ] 4. Detail reference parsing, autocomplete, validation — needs a source to validate
-      against now that the sheet index is gone; revisit scope when this comes up
-- [ ] 5. docx template and client-side generation — first end-to-end milestone
+- [~] 4. ~~Detail reference parsing, autocomplete, validation~~ — skipped per feedback,
+      not needed. Detail references stay plain free text with no validation source.
+- [x] 5. docx template and client-side generation — first end-to-end milestone. See
+      [`docs/report-generation.md`](docs/report-generation.md) for how the template is
+      prepared and how generation-time code fills it, including the photo appendix.
 - [ ] 6. Voice memo record, store, play back
 - [ ] 7. PWA shell, service worker, install, offline verification
 - [ ] 8. Optional: transcription endpoint and post-processing
