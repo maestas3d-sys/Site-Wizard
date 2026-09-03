@@ -52,6 +52,28 @@ npm run preview   # serve the production build locally
 npm run lint       # oxlint
 ```
 
+## Deploying (GitHub Pages)
+
+`.github/workflows/deploy-pages.yml` builds and publishes `main` to GitHub Pages automatically
+on every push. **One-time manual step** the workflow can't do for you: in the repo's Settings →
+Pages, set "Build and deployment" → Source to **GitHub Actions**. After that, every push to
+`main` deploys to `https://<owner>.github.io/Site-Wizard/`.
+
+Trigger a deploy without a new commit from the Actions tab → "Deploy to GitHub Pages" → Run
+workflow.
+
+GitHub Pages serves a project repo like this one from that `/Site-Wizard/` subpath, not the
+root — `vite.config.ts` only applies that as `base` (and matches it in the PWA manifest's
+`start_url`/`scope`) when the workflow sets `GITHUB_PAGES=true`; a plain local `npm run build`
+or `npm run preview` is unaffected. This app's own `.docx` template and icons are all served
+relative to that base already, so nothing else needed changing for it — see the comment at the
+top of `vite.config.ts` if you deploy to a host with a different subpath story.
+
+Once it's live at that HTTPS URL, install-to-home-screen and full offline mode both work for
+real (see `docs/report-generation.md` and the Build order section below for how that's
+verified) — open the URL on your phone, install it, use it once online so the service worker
+can cache everything, then try a visit in airplane mode.
+
 ## Project structure
 
 ```
