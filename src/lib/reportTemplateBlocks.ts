@@ -61,7 +61,21 @@ const LEADING_SPACER_PPR =
 const ITEM_SPACER = `<w:p>${ITEM_PPR}</w:p>`
 const LEADING_SPACER = `<w:p>${LEADING_SPACER_PPR}</w:p>`
 
-export function buildItemsBlockXml(items: Item[]): string {
+/** "  (See Photo #1.)" / "  (See Photos #1–#3.)" — appended after an item's
+ * body text for whichever of its photos made it into the report appendix.
+ * `numbers` are that item's 1-indexed appendix positions, in appendix order
+ * — always contiguous, since the appendix groups photos by item. Not part
+ * of the stored bodyText (which is never auto-edited): this is composed
+ * only in the rendered XML, from the same numbering injectPhotos assigns. */
+function formatPhotoReference(numbers: number[] | undefined): string {
+  if (!numbers || numbers.length === 0) return ''
+  const first = numbers[0]
+  const last = numbers[numbers.length - 1]
+  const ref = first === last ? `Photo #${first}` : `Photos #${first}–#${last}`
+  return `  (See ${ref}.)`
+}
+
+export function buildItemsBlockXml(items: Item[], photoNumbersByItem: Map<string, number[]>): string {
   if (items.length === 0) {
     return `${LEADING_SPACER}<w:p>${ITEM_PPR}<w:r>${ITEM_RPR}<w:t>No items were noted during this visit.</w:t></w:r></w:p>`
   }
@@ -70,11 +84,12 @@ export function buildItemsBlockXml(items: Item[]): string {
   for (const item of items) {
     const body = escapeXml(applyTwoSpaceRule(item.bodyText.trim()))
     const label = escapeXml(itemTypeMeta(item.itemType).label.toUpperCase())
+    const photoRef = escapeXml(formatPhotoReference(photoNumbersByItem.get(item.id)))
     parts.push(
       `<w:p>${ITEM_PPR}` +
         `<w:r>${ITEM_RPR}<w:t xml:space="preserve">${item.sequenceNumber}.) </w:t></w:r>` +
         `<w:r>${ITEM_LABEL_RPR}<w:t xml:space="preserve">${label}: </w:t></w:r>` +
-        `<w:r>${ITEM_RPR}<w:t xml:space="preserve">${body}</w:t></w:r>` +
+        `<w:r>${ITEM_RPR}<w:t xml:space="preserve">${body}${photoRef}</w:t></w:r>` +
         `</w:p>`,
     )
     parts.push(ITEM_SPACER)

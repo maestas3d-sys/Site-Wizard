@@ -54,6 +54,21 @@ function orderPhotosForReport(items: Item[], photos: Photo[]): Photo[] {
     })
 }
 
+/** Maps each item to the 1-indexed appendix numbers of its own photos, in
+ * the same order injectPhotos labels them ("Photo #1", "Photo #2", …) —
+ * `orderedPhotos` must already be in report order (orderPhotosForReport's
+ * output), which is what keeps each item's numbers contiguous. */
+function buildPhotoNumbersByItem(orderedPhotos: Photo[]): Map<string, number[]> {
+  const map = new Map<string, number[]>()
+  orderedPhotos.forEach((photo, index) => {
+    if (photo.itemId === undefined) return
+    const numbers = map.get(photo.itemId)
+    if (numbers) numbers.push(index + 1)
+    else map.set(photo.itemId, [index + 1])
+  })
+  return map
+}
+
 export interface GeneratedReport {
   blob: Blob
   filename: string
@@ -73,6 +88,7 @@ export async function generateReport({ visitId, closingVariant }: GenerateReport
   const items = await listItemsByVisit(visitId)
   const allPhotos = await db.photos.where('visitId').equals(visitId).sortBy('orderIndex')
   const photos = orderPhotosForReport(items, allPhotos)
+  const photoNumbersByItem = buildPhotoNumbersByItem(photos)
 
   const templateResponse = await fetch(TEMPLATE_URL)
   if (!templateResponse.ok) {
@@ -95,7 +111,7 @@ export async function generateReport({ visitId, closingVariant }: GenerateReport
     presentBlock: buildPresentBlockXml(visit.attendees),
     openingStatement: buildOpeningStatement(visit),
     generalState: applyTwoSpaceRule(visit.generalState.trim()),
-    itemsBlock: buildItemsBlockXml(items),
+    itemsBlock: buildItemsBlockXml(items, photoNumbersByItem),
     closingStatement: CLOSING_STATEMENTS[closingVariant],
     engineerName: visit.engineerName,
     engineerCredential: visit.engineerCredential,
