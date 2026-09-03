@@ -32,7 +32,7 @@ export default defineConfig({
         name: 'Site Wizard — Field Reports',
         short_name: 'Site Wizard',
         description: 'Offline field capture and report generation for structural site visits.',
-        theme_color: '#0f4c5c',
+        theme_color: '#0a5b6b', // sampled from the firm's actual logo mark, not approximated
         background_color: '#f1f5f9',
         display: 'standalone',
         start_url: base,

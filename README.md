@@ -94,8 +94,11 @@ src/
 public/
   templates/   the tagged report template docxtemplater renders against (generated —
                see docs/report-generation.md, do not hand-edit)
+  icons/       app icons and favicons (generated — see scripts/, do not hand-edit)
 scripts/
   prepare-report-template.mjs   regenerates public/templates/ from docs/templates/
+  generate-app-icons.py         regenerates public/icons/ from the firm's real logo mark,
+                                 cropped out of the report template's own letterhead image
 ```
 
 **Grid picker / sheet index:** dropped from Project Setup — see the note in the build-order
