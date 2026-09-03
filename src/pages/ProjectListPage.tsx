@@ -21,8 +21,7 @@ export function ProjectListPage() {
 
       {projects?.length === 0 && (
         <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-slate-500">
-          No projects yet. Create one to set up its grid lines and sheet index before heading to
-          the field.
+          No projects yet. Create one to get started.
         </p>
       )}
 

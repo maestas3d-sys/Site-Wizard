@@ -35,8 +35,12 @@ Voice memos use the browser's own `MediaRecorder` + Web Audio (`AnalyserNode` fo
 meter) — no dependency needed. Mime type is feature-detected (opus-in-webm where supported,
 mp4 on Safari), and microphone access is requested on first hold, not at app launch.
 
-Later phases add `react-zoom-pan-pinch`, `vite-plugin-pwa`, and optionally a single serverless
-transcription endpoint — see the Phase 1 brief for the full stack and build order.
+- `vite-plugin-pwa` — service worker (precaches the app shell *and* `public/templates/`, since
+  report generation `fetch()`s the template and would otherwise break offline), web manifest,
+  and install-to-home-screen support for iOS and Android.
+
+Later phases add `react-zoom-pan-pinch` and optionally a single serverless transcription
+endpoint — see the Phase 1 brief for the full stack and build order.
 
 ## Getting started
 
@@ -96,5 +100,18 @@ Tracking the Phase 1 brief's build order:
       a live amplitude meter, haptic pulses, and a 1-second accidental-tap discard.
       Optional throughout; hidden entirely (not disabled) if the mic is denied or
       unavailable, and the typed body-text field is always the complete path on its own.
-- [ ] 7. PWA shell, service worker, install, offline verification
+- [x] 7. PWA shell, service worker, install, offline verification. Verified with a
+      headless-browser pass that matches the brief's own acceptance criterion: load online once
+      (service worker precaches), go fully offline (`context.setOffline(true)`), then complete an
+      entire visit — project, visit, an item with a photo *and* a voice memo, generate and
+      download the `.docx` — with zero network requests succeeding at any point.
 - [ ] 8. Optional: transcription endpoint and post-processing
+
+## Known gap
+
+The brief's Field Constraints section (§8) calls for autosaving item drafts to Dexie on every
+field change, so a dropped phone or force-quit mid-item doesn't lose it (also acceptance
+criterion #7). Not yet built — today an item only reaches Dexie on Save & Add Another / Save &
+Close. Worth doing before real field use; scope is roughly on par with the photo/audio
+pending-state work in steps 3 and 6 (a Dexie-backed draft slot per in-progress item, debounced
+autosave, and a "recover this draft?" prompt on reopening the form).

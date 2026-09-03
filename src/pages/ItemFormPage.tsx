@@ -162,7 +162,7 @@ function ItemForm({
 
       <TextField
         label="Detail references"
-        hint='Comma-separated — e.g. "5/S4.1, 3/S2.0". Not yet validated against a sheet index.'
+        hint='Comma-separated — e.g. "5/S4.1, 3/S2.0".'
         value={detailRefsText}
         onChange={(e) => setDetailRefsText(e.target.value)}
         placeholder="5/S4.1"
