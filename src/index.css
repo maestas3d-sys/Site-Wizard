@@ -1,0 +1,12 @@
+@import 'tailwindcss';
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  /* Direct sunlight / gloved-hand use downstream (capture screens) needs high
+     contrast and no light-gray-on-white; this base keeps body text dark. */
+  @apply bg-slate-100 text-slate-900 antialiased;
+}
