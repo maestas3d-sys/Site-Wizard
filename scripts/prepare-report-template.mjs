@@ -108,21 +108,25 @@ xml = replaceOnce(
   '<w:t>{openingStatement}</w:t>',
 )
 
-// --- General state (optional): wrap the lead-in + value as an if-block.
-// generalState is a plain string, so {#generalState} is docxtemplater's
-// boolean-section form (show once if truthy, omit if empty) — not a loop. ---
+// --- General state (optional): the leading blank line + "At the time of
+// the observation..." + blank + value, as ONE raw-XML anchor (same pattern
+// as presentBlock/itemsBlock below) rather than a docxtemplater
+// `{#generalState}` boolean section. That was tried first, on the
+// assumption that an empty value omits the whole section — it doesn't:
+// docxtemplater only blanks the runs inside, leaving empty paragraphs
+// behind (and the template's leading blank line, paraId 47DFA5C7, was
+// *unconditional* regardless — always present even with nothing to
+// separate). Together those stacked into 2 blank lines above "During the
+// visit..." whenever generalState was empty, instead of the single spacer
+// every other optional section in this document uses. Generation-time code
+// (buildGeneralStateBlockXml) now renders nothing at all when generalState
+// is empty, so the static small spacer already before "During the visit..."
+// is the only gap in that case; when filled, it reproduces the original
+// leading blank + intro + blank + value layout. ---
 xml = replaceOnce(
   xml,
-  '<w:t xml:space="preserve">At the time of the observation, construction progress was as follows: </w:t>',
-  '<w:t xml:space="preserve">{#generalState}At the time of the observation, construction progress was as follows: </w:t>',
-)
-// First "Construction Progress" line becomes the value; its numPr (a
-// bulleted-list numbering the source template applied here) is dropped —
-// generalState is one prose paragraph, not a list.
-xml = replaceOnce(
-  xml,
-  '<w:p w14:paraId="1755B9BF" w14:textId="4CAC6E0B" w:rsidR="00437B39" w:rsidRDefault="0037138A" w:rsidP="00437B39"><w:pPr><w:widowControl w:val="0"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="22"/></w:numPr><w:tabs><w:tab w:val="left" w:pos="700"/><w:tab w:val="left" w:pos="3960"/><w:tab w:val="left" w:pos="5490"/></w:tabs><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>Construction Progress</w:t></w:r></w:p>',
-  '<w:p w14:paraId="1755B9BF" w14:textId="4CAC6E0B" w:rsidR="00437B39" w:rsidRDefault="0037138A" w:rsidP="00437B39"><w:pPr><w:widowControl w:val="0"/><w:tabs><w:tab w:val="left" w:pos="700"/><w:tab w:val="left" w:pos="3960"/><w:tab w:val="left" w:pos="5490"/></w:tabs><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>{generalState}{/generalState}</w:t></w:r></w:p>',
+  '<w:p w14:paraId="47DFA5C7" w14:textId="77777777" w:rsidR="00B250E3" w:rsidRDefault="00B250E3"><w:pPr><w:widowControl w:val="0"/><w:tabs><w:tab w:val="left" w:pos="900"/><w:tab w:val="left" w:pos="3960"/><w:tab w:val="left" w:pos="5490"/></w:tabs><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr></w:p><w:p w14:paraId="270A9D5F" w14:textId="77777777" w:rsidR="00437B39" w:rsidRDefault="00437B39" w:rsidP="00437B39"><w:pPr><w:widowControl w:val="0"/><w:tabs><w:tab w:val="left" w:pos="900"/><w:tab w:val="left" w:pos="3960"/><w:tab w:val="left" w:pos="5490"/></w:tabs><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t xml:space="preserve">At the time of the observation, construction progress was as follows: </w:t></w:r></w:p><w:p w14:paraId="5D44113A" w14:textId="77777777" w:rsidR="00437B39" w:rsidRDefault="00437B39" w:rsidP="00437B39"><w:pPr><w:widowControl w:val="0"/><w:tabs><w:tab w:val="left" w:pos="900"/><w:tab w:val="left" w:pos="3960"/><w:tab w:val="left" w:pos="5490"/></w:tabs><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr></w:p><w:p w14:paraId="1755B9BF" w14:textId="4CAC6E0B" w:rsidR="00437B39" w:rsidRDefault="0037138A" w:rsidP="00437B39"><w:pPr><w:widowControl w:val="0"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="22"/></w:numPr><w:tabs><w:tab w:val="left" w:pos="700"/><w:tab w:val="left" w:pos="3960"/><w:tab w:val="left" w:pos="5490"/></w:tabs><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>Construction Progress</w:t></w:r></w:p>',
+  '<w:p><w:pPr><w:widowControl w:val="0"/><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>{@generalStateBlock}</w:t></w:r></w:p>',
 )
 // Second "Construction Progress" example line — not needed, delete.
 xml = deleteOnce(

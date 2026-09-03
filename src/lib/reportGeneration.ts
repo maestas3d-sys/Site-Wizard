@@ -9,7 +9,7 @@ import type { Visit } from '../types/visit'
 import { applyTwoSpaceRule } from './houseStyle'
 import { injectPhotos } from './reportImages'
 import { formatReportDate, formatVisitDateLong } from './reportDates'
-import { buildItemsBlockXml, buildPresentBlockXml } from './reportTemplateBlocks'
+import { buildGeneralStateBlockXml, buildItemsBlockXml, buildPresentBlockXml } from './reportTemplateBlocks'
 
 // import.meta.env.BASE_URL is Vite's configured `base`, always ending in
 // "/" — a hardcoded leading "/" here would 404 under GitHub Pages, which
@@ -110,7 +110,7 @@ export async function generateReport({ visitId, closingVariant }: GenerateReport
     jobNumber: project.jobNumber,
     presentBlock: buildPresentBlockXml(visit.attendees),
     openingStatement: buildOpeningStatement(visit),
-    generalState: applyTwoSpaceRule(visit.generalState.trim()),
+    generalStateBlock: buildGeneralStateBlockXml(visit.generalState),
     itemsBlock: buildItemsBlockXml(items, photoNumbersByItem),
     closingStatement: CLOSING_STATEMENTS[closingVariant],
     engineerName: visit.engineerName,
