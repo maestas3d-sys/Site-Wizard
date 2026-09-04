@@ -2,38 +2,30 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import { db } from '../db/db'
 
-function projectCountLabel(count: number | undefined): string {
-  if (count === undefined) return 'Loading…'
-  if (count === 0) return 'No projects yet'
-  return count === 1 ? '1 project' : `${count} projects`
-}
-
 export function ProjectListPage() {
   const projects = useLiveQuery(() => db.projects.orderBy('createdAt').reverse().toArray(), [])
 
   return (
     <div className="pb-24">
-      <header className="bg-gradient-to-br from-[#0e6d7f] to-[#073e48] px-4 pb-5 pt-5 text-white shadow-md">
-        <div className="mx-auto flex max-w-2xl items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm">
+      <header className="bg-gradient-to-br from-[#10727f] via-[#0a5b6b] to-[#073e48] px-4 pb-5 pt-5 text-white shadow-md">
+        <div className="mx-auto max-w-2xl">
+          <div className="inline-flex rounded-xl bg-white px-3.5 py-2.5 shadow-sm">
             <img
-              src={`${import.meta.env.BASE_URL}icons/icon-192.png`}
-              alt="Wiseman+Rohy"
-              className="h-12 w-12 object-contain"
+              src={`${import.meta.env.BASE_URL}logo/wr-full-logo.png`}
+              alt="Wiseman+Rohy Structural Engineers"
+              className="h-7 w-auto"
             />
           </div>
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold leading-tight">Site Wizard</h1>
-            <p className="text-sm text-teal-100">{projectCountLabel(projects?.length)}</p>
+          <p className="mt-2.5 text-xs font-semibold tracking-[0.18em] text-teal-100">FIELD REPORTS</p>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-bold leading-tight">Projects</h1>
+            <Link
+              to="/projects/new"
+              className="min-h-12 rounded-lg bg-white px-4 py-3 text-base font-semibold text-[#0a5b6b] shadow-sm active:bg-teal-50"
+            >
+              + New Project
+            </Link>
           </div>
-        </div>
-        <div className="mx-auto mt-4 flex max-w-2xl justify-end">
-          <Link
-            to="/projects/new"
-            className="min-h-12 rounded-lg border border-white/40 bg-white/15 px-4 py-3 text-base font-semibold text-white shadow-sm active:bg-white/25"
-          >
-            + New Project
-          </Link>
         </div>
       </header>
 
