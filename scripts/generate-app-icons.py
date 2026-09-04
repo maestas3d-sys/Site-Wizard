@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Regenerates public/icons/*.png from the firm's actual logo mark.
+"""Regenerates public/icons/*.png and public/logo/*.png from the firm's
+actual logo.
 
 The source is the letterhead logo already embedded in the report template
 (docs/templates/field-report-template.docx, word/media/image1.png) — the
-building icon on the left of "WISEMAN+ROHY STRUCTURAL ENGINEERS". This
-script crops out just that mark and composites it onto the icon shapes a
+building icon + "WISEMAN+ROHY STRUCTURAL ENGINEERS" wordmark. This script
+crops out just the building mark and composites it onto the icon shapes a
 PWA needs (a rounded-square "any" icon, a full-bleed "maskable" one with
-extra safe-zone padding, and the small favicon sizes).
+extra safe-zone padding, and the small favicon sizes), and separately saves
+the full logo (mark + wordmark, transparent background, untouched — its
+native 784x168 already has plenty of headroom for how small it's ever
+displayed) for use in the app's own UI chrome.
 
 One-time authoring step, not part of the app or its build — re-run only if
 the firm sends an updated logo file. Requires Pillow (`pip install
@@ -24,6 +28,7 @@ from PIL import Image, ImageDraw
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_TEMPLATE = REPO_ROOT / "docs" / "templates" / "field-report-template.docx"
 OUT_DIR = REPO_ROOT / "public" / "icons"
+LOGO_OUT_DIR = REPO_ROOT / "public" / "logo"
 
 # Established by inspecting the source image: the building mark (including
 # its ground-line swoosh) occupies the left 190px of the 784x168 logo,
@@ -32,13 +37,16 @@ MARK_CROP_WIDTH = 190
 WHITE = (253, 253, 253, 255)
 
 
-def extract_mark(template_path: Path) -> Image.Image:
+def load_full_logo(template_path: Path) -> Image.Image:
     with zipfile.ZipFile(template_path) as zf:
         data = zf.read("word/media/image1.png")
     import io
 
-    logo = Image.open(io.BytesIO(data)).convert("RGBA")
-    return logo.crop((0, 0, MARK_CROP_WIDTH, logo.height))
+    return Image.open(io.BytesIO(data)).convert("RGBA")
+
+
+def extract_mark(full_logo: Image.Image) -> Image.Image:
+    return full_logo.crop((0, 0, MARK_CROP_WIDTH, full_logo.height))
 
 
 def compose(mark: Image.Image, canvas_size: int, fill_fraction: float, rounded: bool, out_path: Path) -> None:
@@ -73,7 +81,8 @@ def main() -> None:
         print(f"Template not found: {template_path}", file=sys.stderr)
         sys.exit(1)
 
-    mark = extract_mark(template_path)
+    full_logo = load_full_logo(template_path)
+    mark = extract_mark(full_logo)
 
     # (canvas size, mark fill fraction, pre-rounded background)
     # 0.78 fill / rounded matches how most OSes render a standard app icon;
@@ -85,6 +94,11 @@ def main() -> None:
     compose(mark, 180, 0.78, True, OUT_DIR / "apple-touch-icon.png")
     compose(mark, 64, 0.82, True, OUT_DIR / "favicon-64.png")
     compose(mark, 32, 0.82, True, OUT_DIR / "favicon-32.png")
+
+    LOGO_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    logo_out_path = LOGO_OUT_DIR / "wr-full-logo.png"
+    full_logo.save(logo_out_path)
+    print(f"wrote {logo_out_path.relative_to(REPO_ROOT)} ({full_logo.width}x{full_logo.height}, transparent bg)")
 
 
 if __name__ == "__main__":
