@@ -19,24 +19,37 @@ fills it with `docxtemplater`, splices in the photo appendix, and returns a `Blo
 
 ## Why raw-XML blocks instead of docxtemplater loops
 
-The PRESENT: (attendees) and item-list blocks are built as hand-written OOXML strings
-(`reportTemplateBlocks.ts`) and inserted via docxtemplater's `{@tag}` (unescaped raw-XML
+The PRESENT: (attendees), general-state, and item-list blocks are all built as hand-written OOXML
+strings (`reportTemplateBlocks.ts`) and inserted via docxtemplater's `{@tag}` (unescaped raw-XML
 insertion), not `{#tag}...{/tag}` loops. A docxtemplater paragraph-loop repeats *every* paragraph
-in its body once per array element — fine for a uniform list, wrong here: only the *first*
-attendee shares a line with the "PRESENT:" label, and each item needs a "N.) " prefix plus a
-blank spacer paragraph between entries, none of which a straight repeat produces. Building the
-paragraphs directly, matching the source template's original formatting byte-for-byte, sidesteps
-the mismatch entirely — verified empirically (a standalone render test) before it went anywhere
-near the real template.
+in its body once per array element (or once if truthy / zero times if falsy, for a boolean
+section) — fine for a uniform, always-present block, wrong here in two different ways:
+
+- Only the *first* attendee shares a line with the "PRESENT:" label, and each item needs a blank
+  spacer paragraph between entries — a straight repeat can't produce either.
+- `generalState`'s `{#generalState}...{/generalState}` boolean section was tried first (the
+  optional field seemed like a natural fit for docxtemplater's built-in if-block), on the
+  assumption that a falsy value omits the section's paragraphs entirely. It doesn't: docxtemplater
+  only blanks the runs inside, leaving the paragraphs themselves behind — and the template placed
+  an *unconditional* blank line just before that section regardless. Together, leaving the field
+  empty (the common case) left 2 blank lines above "During the visit..." instead of the single
+  spacer every other optional section in this report uses.
+
+Building the paragraphs directly, matching the source template's original formatting byte-for-byte,
+sidesteps both problems: an empty `generalState` now renders nothing at all. Verified empirically
+(a standalone render test, and for `generalState` specifically, generating with the field both
+empty and filled) before any of it went near the real template.
 
 Anything inserted this way is user-typed text landing in a hand-built XML string, so it's always
 passed through `xmlEscape.ts` first — an attendee name or item body containing `&` or `<` would
 otherwise corrupt the document.
 
-`generalState` (an optional prose paragraph) uses a real docxtemplater conditional instead:
-`{#generalState}...{/generalState}` around the lead-in + value. Since `generalState` is a plain
-string, not an array, docxtemplater's section syntax degrades to "show once if truthy, omit if
-falsy" — exactly an if-block, no loop involved.
+Item numbering ("1.)", "2.)", …) is a real Word numbered list, not literal "N.) " text: each item
+paragraph carries `<w:numPr><w:numId w:val="100"/></w:numPr>`, pointing at a custom list format
+(`%1.)`, matching house style) that `scripts/prepare-report-template.mjs` adds to
+`word/numbering.xml` when the template is prepared. Word — not this code — renders the number at
+display time, so adding or deleting an item paragraph by hand in Word afterward renumbers the rest
+automatically, the way a real numbered list should.
 
 ## Why no image module
 

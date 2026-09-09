@@ -137,8 +137,9 @@ xml = deleteOnce(
 // --- Items block: "During the visit..." lead-in stays static/unconditional
 // (a report with zero items is a rare edge case; itemsBlock handles it
 // gracefully). The 3 example items + their spacer paragraphs are replaced
-// by one raw-XML anchor — generation-time code builds "{n}.) {bodyText}"
-// per item, matching this block's exact spacer rhythm. ---
+// by one raw-XML anchor — generation-time code builds one paragraph per
+// item (numbered via the real Word list numId 100 set up below, not
+// literal "{n}.) " text), matching this block's exact spacer rhythm. ---
 xml = replaceOnce(
   xml,
   '<w:p w14:paraId="1D3D532D" w14:textId="77777777" w:rsidR="00437B39" w:rsidRPr="008E0165" w:rsidRDefault="00437B39" w:rsidP="00437B39"><w:pPr><w:widowControl w:val="0"/><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="16"/><w:szCs w:val="16"/></w:rPr></w:pPr></w:p><w:p w14:paraId="506F2BE6" w14:textId="01278BB3" w:rsidR="007E51B0" w:rsidRPr="0052394B" w:rsidRDefault="007E51B0" w:rsidP="007E51B0"><w:pPr><w:widowControl w:val="0"/><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>-Item 1</w:t></w:r></w:p><w:p w14:paraId="53F3F4D0" w14:textId="77777777" w:rsidR="007E51B0" w:rsidRDefault="007E51B0" w:rsidP="007E51B0"><w:pPr><w:widowControl w:val="0"/><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr></w:p><w:p w14:paraId="5103BCBB" w14:textId="54577173" w:rsidR="007E51B0" w:rsidRDefault="007E51B0" w:rsidP="007E51B0"><w:pPr><w:widowControl w:val="0"/><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>-Item 2</w:t></w:r></w:p><w:p w14:paraId="1E6818AD" w14:textId="77777777" w:rsidR="007E51B0" w:rsidRDefault="007E51B0" w:rsidP="007E51B0"><w:pPr><w:widowControl w:val="0"/><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr></w:p><w:p w14:paraId="54B620F0" w14:textId="7E58ACB1" w:rsidR="007E51B0" w:rsidRDefault="007E51B0" w:rsidP="007E51B0"><w:pPr><w:widowControl w:val="0"/><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>-Item 3</w:t></w:r></w:p><w:p w14:paraId="7E9D4F3B" w14:textId="77777777" w:rsidR="00437B39" w:rsidRDefault="00437B39" w:rsidP="00437B39"><w:pPr><w:widowControl w:val="0"/><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr></w:p>',
@@ -164,6 +165,32 @@ xml = replaceOnce(
 )
 
 zip.file('word/document.xml', xml)
+
+// --- Items block numbering: a real Word numbered list (numId 100), not
+// literal "{n}.) " text. buildItemsBlockXml (reportTemplateBlocks.ts) sets
+// <w:numPr><w:numId w:val="100"/></w:numPr> on each item paragraph instead
+// of writing the number as a run — so if someone adds or deletes an item
+// paragraph by hand in Word afterward, the numbering updates itself, the
+// way a real Word list should. Custom format "%1.)" matches the existing
+// house style ("1.)", "2.)", …) exactly; suff="space" gives a single space
+// after the number (Word's default is a tab, which — with no tab stop
+// defined — would drift the body text out of alignment). abstractNumId/
+// numId 100 are well clear of the template's own IDs (0-24).
+let numberingXml = zip.file('word/numbering.xml').asText()
+const itemsAbstractNum =
+  '<w:abstractNum w:abstractNumId="100"><w:multiLevelType w:val="singleLevel"/><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:suff w:val="space"/><w:lvlText w:val="%1.)"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="0" w:firstLine="0"/></w:pPr><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/></w:rPr></w:lvl></w:abstractNum>'
+const itemsNum = '<w:num w:numId="100"><w:abstractNumId w:val="100"/></w:num>'
+// All <w:abstractNum> elements must precede all <w:num> elements per the
+// OOXML schema — insert ours right before the first existing <w:num>,
+// not at the end of the file (which is after every <w:num> already there).
+const firstNumIndex = numberingXml.indexOf('<w:num w:numId=')
+if (firstNumIndex === -1) {
+  throw new Error('Could not find an existing <w:num> element in numbering.xml to insert before')
+}
+numberingXml =
+  numberingXml.slice(0, firstNumIndex) + itemsAbstractNum + numberingXml.slice(firstNumIndex)
+numberingXml = replaceOnce(numberingXml, '</w:numbering>', `${itemsNum}</w:numbering>`)
+zip.file('word/numbering.xml', numberingXml)
 
 // Photos are re-encoded as JPEG at capture time; the template only ships a
 // PNG default. Register jpeg now so generation-time code can add media

@@ -77,6 +77,14 @@ export function buildGeneralStateBlockXml(generalState: string): string {
 
 const ITEM_PPR =
   '<w:pPr><w:widowControl w:val="0"/><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr>'
+// Same as ITEM_PPR, plus numPr pointing at numId 100 — the real Word
+// numbered list (defined in word/numbering.xml by
+// scripts/prepare-report-template.mjs, format "%1.)") each item paragraph
+// uses instead of a literal "N.) " text run. That's what makes the
+// numbering a genuine Word list: add or delete an item paragraph by hand
+// afterward and Word renumbers the rest on its own.
+const ITEM_NUMBERED_PPR =
+  '<w:pPr><w:widowControl w:val="0"/><w:numPr><w:ilvl w:val="0"/><w:numId w:val="100"/></w:numPr><w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr></w:pPr>'
 const ITEM_RPR =
   '<w:rPr><w:rFonts w:ascii="Futura Bk BT" w:hAnsi="Futura Bk BT"/><w:snapToGrid w:val="0"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>'
 // Same run properties as ITEM_RPR, plus bold — used for the item-type label
@@ -114,8 +122,7 @@ export function buildItemsBlockXml(items: Item[], photoNumbersByItem: Map<string
     const label = escapeXml(itemTypeMeta(item.itemType).label.toUpperCase())
     const photoRef = escapeXml(formatPhotoReference(photoNumbersByItem.get(item.id)))
     parts.push(
-      `<w:p>${ITEM_PPR}` +
-        `<w:r>${ITEM_RPR}<w:t xml:space="preserve">${item.sequenceNumber}.) </w:t></w:r>` +
+      `<w:p>${ITEM_NUMBERED_PPR}` +
         `<w:r>${ITEM_LABEL_RPR}<w:t xml:space="preserve">${label}: </w:t></w:r>` +
         `<w:r>${ITEM_RPR}<w:t xml:space="preserve">${body}${photoRef}</w:t></w:r>` +
         `</w:p>`,
