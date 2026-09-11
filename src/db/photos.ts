@@ -3,9 +3,9 @@ import { db } from './db'
 
 /**
  * A photo attached to an item that hasn't necessarily been written to Dexie
- * yet — item capture holds all its photos as in-memory pending records
- * (mirroring how detailRefs/measurements work) and only reconciles them
- * against the `photos` table when the item itself is saved.
+ * yet — item capture holds all its photos as in-memory pending records and
+ * only reconciles them against the `photos` table when the item itself is
+ * saved.
  */
 export interface PendingPhoto {
   id: string

@@ -15,6 +15,8 @@ export const ITEM_TYPES: ItemTypeMeta[] = [
   { value: 'info-requested', label: 'Info Requested', colorClasses: 'bg-blue-100 text-blue-700' },
   { value: 'not-observable', label: 'Not Observable', colorClasses: 'bg-slate-200 text-slate-600' },
   { value: 'progress-note', label: 'Progress Note', colorClasses: 'bg-teal-100 text-teal-700' },
+  // No bold qualifier prefix in the report for this one — see buildItemsBlockXml.
+  { value: 'none', label: 'None', colorClasses: 'bg-white text-slate-700' },
 ]
 
 const BY_VALUE = new Map(ITEM_TYPES.map((t) => [t.value, t]))

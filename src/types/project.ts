@@ -23,6 +23,5 @@ export interface Project {
   gridLetters: string[] // ["A","B","C","D"]
   gridNumbers: string[] // ["1","2","3","4","5","6"]
   sheets: Sheet[]
-  elementPresets: string[] // learned autocomplete: "mechanical well", "SE tower"
   createdAt: number
 }

@@ -184,7 +184,6 @@ export function VisitDetailPage() {
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.colorClasses}`}>
                       {meta.label}
                     </span>
-                    {item.gridRef && <span className="text-xs text-slate-500">{item.gridRef}</span>}
                     {item.photoIds.length > 0 && (
                       <span className="text-xs text-slate-500">
                         📷 {item.photoIds.length}

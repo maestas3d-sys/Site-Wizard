@@ -103,8 +103,14 @@ scripts/
 
 **Grid picker / sheet index:** dropped from Project Setup — see the note in the build-order
 list below. `Project.gridLetters`/`gridNumbers`/`sheets` stay in the data model for a possible
-future "upload a sheet, tap to calibrate" flow, but nothing currently writes to them; grid and
-detail references are free text on the item.
+future "upload a sheet, tap to calibrate" flow, but nothing currently writes to them.
+
+**Item Capture is deliberately narrow:** body text, item type, photos, and an optional voice
+memo — that's the whole form. Grid reference, element/level, detail references, and measurements
+were all typed fields at one point and are all gone now, per direct field feedback that multiple
+inputs per item was tedious and none of it ever reached the generated report anyway (see the
+build-order note below). Any of that goes in the body text now, free text, if an item needs it at
+all.
 
 ## Build order
 
@@ -115,10 +121,15 @@ Tracking the Phase 1 brief's build order:
       manual "upload a sheet, tap to calibrate" flow if it turns out to be worth it — no OCR/AI,
       that would blow Phase 1's no-AI scope and isn't reliable on hand-drawn/CAD grid labels
       anyway.
-- [x] 2. Visit creation, item capture with typed fields, item list
+- [x] 2. Visit creation, item capture, item list — item capture originally had typed
+      fields for grid reference, element/level, and detail references too; all three (plus
+      measurements, step 2 of the original scope) were removed later per feedback — multiple
+      inputs per item was tedious in the field, and none of them ever populated the generated
+      report. Body text, item type, photos, and an optional voice memo is the whole form now.
 - [x] 3. Photo capture, downscale, EXIF orientation, thumbnails
-- [~] 4. ~~Detail reference parsing, autocomplete, validation~~ — skipped per feedback,
-      not needed. Detail references stay plain free text with no validation source.
+- [~] 4. ~~Detail reference parsing, autocomplete, validation~~ — skipped per feedback early
+      on; the field itself was later removed outright (see step 2's note) rather than staying as
+      unvalidated free text.
 - [x] 5. docx template and client-side generation — first end-to-end milestone. See
       [`docs/report-generation.md`](docs/report-generation.md) for how the template is
       prepared and how generation-time code fills it, including the photo appendix.
