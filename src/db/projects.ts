@@ -15,7 +15,6 @@ export function emptyProjectDraft(): ProjectDraft {
     gridLetters: [],
     gridNumbers: [],
     sheets: [],
-    elementPresets: [],
   }
 }
 
@@ -53,17 +52,4 @@ export async function deleteProject(id: string): Promise<void> {
     }
     await db.projects.delete(id)
   })
-}
-
-/**
- * Learns a new element/level preset from a saved item, so the second item
- * of a visit autocompletes faster than the first. Silently no-ops on a
- * blank value or an exact duplicate.
- */
-export async function addElementPreset(id: string, value: string): Promise<void> {
-  const trimmed = value.trim()
-  if (!trimmed) return
-  const project = await db.projects.get(id)
-  if (!project || project.elementPresets.includes(trimmed)) return
-  await db.projects.update(id, { elementPresets: [...project.elementPresets, trimmed] })
 }

@@ -32,10 +32,10 @@ export function TextField({ label, hint, ...inputProps }: TextFieldProps) {
 type TextAreaFieldProps = Omit<FieldWrapperProps, 'children'> &
   TextareaHTMLAttributes<HTMLTextAreaElement>
 
-export function TextAreaField({ label, hint, ...textareaProps }: TextAreaFieldProps) {
+export function TextAreaField({ label, hint, rows = 4, ...textareaProps }: TextAreaFieldProps) {
   return (
     <FieldWrapper label={label} hint={hint}>
-      <textarea {...textareaProps} className={`${inputClasses} min-h-24`} />
+      <textarea rows={rows} {...textareaProps} className={inputClasses} />
     </FieldWrapper>
   )
 }

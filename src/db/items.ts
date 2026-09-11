@@ -8,13 +8,8 @@ export type ItemDraft = Omit<Item, 'id' | 'visitId' | 'sequenceNumber' | 'create
 
 export function emptyItemDraft(): ItemDraft {
   return {
-    gridRef: '',
-    elementRef: '',
-    levelRef: '',
     itemType: 'deficiency',
     bodyText: '',
-    detailRefs: [],
-    measurements: [],
     photoIds: [],
   }
 }

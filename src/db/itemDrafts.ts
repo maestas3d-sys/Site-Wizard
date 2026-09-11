@@ -17,7 +17,6 @@ export interface ItemDraftRecord {
   visitId: string
   itemId?: string
   draft: ItemDraft
-  detailRefsText: string
   photos: PendingPhoto[]
   audioNote: PendingAudioNote | null
   updatedAt: number
