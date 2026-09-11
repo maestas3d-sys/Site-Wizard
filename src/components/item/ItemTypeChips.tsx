@@ -6,7 +6,7 @@ interface ItemTypeChipsProps {
   onChange: (value: ItemType) => void
 }
 
-/** Seven single-select chips, large enough for a gloved thumb. */
+/** Single-select chips, large enough for a gloved thumb. */
 export function ItemTypeChips({ value, onChange }: ItemTypeChipsProps) {
   return (
     <div className="flex flex-wrap gap-2">

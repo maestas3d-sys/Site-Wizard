@@ -119,11 +119,16 @@ export function buildItemsBlockXml(items: Item[], photoNumbersByItem: Map<string
   const parts = [LEADING_SPACER]
   for (const item of items) {
     const body = escapeXml(applyTwoSpaceRule(item.bodyText.trim()))
-    const label = escapeXml(itemTypeMeta(item.itemType).label.toUpperCase())
     const photoRef = escapeXml(formatPhotoReference(photoNumbersByItem.get(item.id)))
+    // "None" is the one item type with no bold qualifier — the body text
+    // stands on its own, still numbered like every other item.
+    const labelRun =
+      item.itemType === 'none'
+        ? ''
+        : `<w:r>${ITEM_LABEL_RPR}<w:t xml:space="preserve">${escapeXml(itemTypeMeta(item.itemType).label.toUpperCase())}: </w:t></w:r>`
     parts.push(
       `<w:p>${ITEM_NUMBERED_PPR}` +
-        `<w:r>${ITEM_LABEL_RPR}<w:t xml:space="preserve">${label}: </w:t></w:r>` +
+        labelRun +
         `<w:r>${ITEM_RPR}<w:t xml:space="preserve">${body}${photoRef}</w:t></w:r>` +
         `</w:p>`,
     )

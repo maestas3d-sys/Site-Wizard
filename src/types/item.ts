@@ -6,6 +6,7 @@ export type ItemType =
   | 'info-requested' // asks another party to confirm or provide
   | 'not-observable' // couldn't be seen at time of visit
   | 'progress-note'
+  | 'none' // no qualifier label in the report — body text stands on its own
 
 export interface Item {
   id: string
