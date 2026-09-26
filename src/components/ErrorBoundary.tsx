@@ -39,6 +39,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <p className="max-w-xs text-sm text-wr-ink-500">
           This screen couldn't be displayed. Your other projects and visits are unaffected.
         </p>
+        {/* Plain text, not collapsed behind a toggle — this is a field app;
+            the fastest way to get a fix is the engineer reading this back
+            over the phone, not digging through a browser console. */}
+        <p className="max-w-xs break-words rounded border border-wr-taupe-200 bg-white p-2.5 font-mono text-xs text-wr-ink-500">
+          {this.state.error.message || String(this.state.error)}
+        </p>
         <Button
           onClick={() => {
             // Reloading alone could land right back on the same crashed

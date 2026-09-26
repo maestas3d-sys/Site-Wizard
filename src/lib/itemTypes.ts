@@ -27,9 +27,17 @@ export const ITEM_TYPES: ItemTypeMeta[] = [
 
 const BY_VALUE = new Map(ITEM_TYPES.map((t) => [t.value, t]))
 
+/** A neutral fallback for a stored itemType that doesn't match any current
+ * ITEM_TYPES entry. The ItemType union promises this can't happen, but that
+ * promise is only checked at compile time — an older schema version, or any
+ * other real-world data the type system never saw, is read from Dexie as
+ * plain strings with no runtime validation. Falling back here means one bad
+ * value shows an odd-looking badge instead of crashing every screen that
+ * lists items (Visit items, Project's visit cards). */
+const FALLBACK_TYPE_META: ItemTypeMeta = { value: 'none', label: 'Unknown', bg: '#ECE9E0', text: '#6B7477' }
+
 export function itemTypeMeta(type: ItemType): ItemTypeMeta {
-  // BY_VALUE is seeded from ITEM_TYPES, which covers every ItemType — safe to assert.
-  return BY_VALUE.get(type)!
+  return BY_VALUE.get(type) ?? FALLBACK_TYPE_META
 }
 
 /** The 3 "quick type" swipe-row buttons (deficiency/acceptable/requires-rfi)
