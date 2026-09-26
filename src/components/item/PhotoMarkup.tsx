@@ -4,6 +4,7 @@ import {
   MARKUP_COLORS,
   MARKUP_DEFAULT_COLOR,
   MARKUP_MIN_DRAG_PX,
+  coverTransform,
   hitTestHandle,
   hitTestShapeBody,
   moveHandle,
@@ -58,19 +59,22 @@ export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
   function toImageSpace(e: ReactPointerEvent<SVGSVGElement>): { x: number; y: number } {
     if (!dimensions) return { x: 0, y: 0 }
     const rect = e.currentTarget.getBoundingClientRect()
+    const { scale, offsetX, offsetY } = coverTransform(rect, dimensions.width, dimensions.height)
     return {
-      x: ((e.clientX - rect.left) / rect.width) * dimensions.width,
-      y: ((e.clientY - rect.top) / rect.height) * dimensions.height,
+      x: (e.clientX - rect.left - offsetX) / scale,
+      y: (e.clientY - rect.top - offsetY) / scale,
     }
   }
 
-  /** This photo's current display-to-natural-pixel scale — a finger's
-   * effective precision is a constant number of screen pixels, not image
-   * pixels, so every CSS-px tolerance below must be converted through this
-   * at gesture start, not baked in as a fixed image-space constant. */
+  /** Image-space units per CSS px, via the same cover transform as
+   * toImageSpace — a finger's effective precision is a constant number of
+   * screen pixels, not image pixels, so every CSS-px tolerance below must
+   * be converted through this at gesture start, not baked in as a fixed
+   * image-space constant. */
   function displayScale(e: ReactPointerEvent<SVGSVGElement>): number {
+    if (!dimensions) return 1
     const rect = e.currentTarget.getBoundingClientRect()
-    return dimensions ? dimensions.width / rect.width : 1
+    return 1 / coverTransform(rect, dimensions.width, dimensions.height).scale
   }
 
   function handlePointerDown(e: ReactPointerEvent<SVGSVGElement>) {
