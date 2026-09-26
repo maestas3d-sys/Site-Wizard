@@ -111,28 +111,32 @@ export function PhotoCapture({ photos, onChange, onMarkup }: PhotoCaptureProps) 
           />
         ))}
 
-        <label className="flex h-24 w-24 flex-none cursor-pointer flex-col items-center justify-center gap-0.5 rounded border-[1.5px] border-dashed border-wr-blue-800 font-body text-[13px] font-semibold text-wr-blue-800">
+        {/* focus-within:outline-none: Safari/iOS draws a focus ring on the
+            label itself once its hidden file input gets focus back after
+            the native camera/photo picker closes — a leftover outline on
+            top of (not part of) the tile's own intentional dashed border. */}
+        <label className="flex h-24 w-24 flex-none cursor-pointer flex-col items-center justify-center gap-0.5 rounded border-[1.5px] border-dashed border-wr-blue-800 font-body text-[13px] font-semibold text-wr-blue-800 focus-within:outline-none">
           <span aria-hidden="true">+</span>
           <span>Take photo</span>
           <input
             type="file"
             accept="image/*"
             capture="environment"
-            className="hidden"
+            className="hidden outline-none"
             onChange={(e) => {
               void handleFiles(e.target.files)
               e.target.value = ''
             }}
           />
         </label>
-        <label className="flex h-24 w-24 flex-none cursor-pointer flex-col items-center justify-center gap-0.5 rounded border-[1.5px] border-dashed border-wr-blue-800 font-body text-[13px] font-semibold text-wr-blue-800">
+        <label className="flex h-24 w-24 flex-none cursor-pointer flex-col items-center justify-center gap-0.5 rounded border-[1.5px] border-dashed border-wr-blue-800 font-body text-[13px] font-semibold text-wr-blue-800 focus-within:outline-none">
           <span aria-hidden="true">+</span>
           <span>Choose photos</span>
           <input
             type="file"
             accept="image/*"
             multiple
-            className="hidden"
+            className="hidden outline-none"
             onChange={(e) => {
               void handleFiles(e.target.files)
               e.target.value = ''
