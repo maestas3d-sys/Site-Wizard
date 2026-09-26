@@ -9,7 +9,14 @@ export const MARKUP_COLORS: { name: string; hex: string }[] = [
 
 export const MARKUP_DEFAULT_COLOR = MARKUP_COLORS[0].hex
 
-/** A drag shorter than this is a tap, not a shape — discarded on release. */
+/** A drag shorter than this many CSS px is a tap (or finger jitter), not a
+ * shape — discarded on release. Must be converted to image-space units via
+ * the live display-to-natural-pixel scale before comparing against drawn
+ * coordinates, same as the handle/body hit-test tolerances in PhotoMarkup —
+ * comparing it directly against raw image-space deltas made it meaningless
+ * at typical ~2000px photo widths (worth well under 2 screen px), so a tiny
+ * jitter while trying to grab a handle would still register as a real,
+ * unwanted little arrow. */
 export const MARKUP_MIN_DRAG_PX = 10
 
 /** Stroke width scales with the photo's own natural pixel width (not its
