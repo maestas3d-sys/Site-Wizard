@@ -18,22 +18,35 @@ export interface PendingPhoto {
   annotations: PhotoAnnotation[]
 }
 
+/** A PendingPhoto read back out of Dexie — the photos table, or a recovered
+ * item-draft snapshot (itemDrafts.ts) — can predate a field added to the
+ * shape after it was written (`annotations` here; potentially others
+ * later), since neither table validates against the current type at
+ * runtime. Applied at every point a PendingPhoto re-enters the app from
+ * storage, so a photo from an old draft can't hand later code a shape it
+ * doesn't expect. */
+export function normalizePendingPhoto(p: PendingPhoto): PendingPhoto {
+  return { ...p, annotations: p.annotations ?? [] }
+}
+
 /** Loads an existing item's photos as pending records, in photoIds order, for editing. */
 export async function loadPendingPhotos(photoIds: string[]): Promise<PendingPhoto[]> {
   if (photoIds.length === 0) return []
   const photos = await db.photos.bulkGet(photoIds) // preserves input order
   return photos
     .filter((p): p is Photo => p !== undefined)
-    .map((p) => ({
-      id: p.id,
-      blob: p.blob,
-      thumbBlob: p.thumbBlob,
-      caption: p.caption,
-      includeInReport: p.includeInReport,
-      exifTimestamp: p.exifTimestamp,
-      orientationCorrected: p.orientationCorrected,
-      annotations: p.annotations ?? [],
-    }))
+    .map((p) =>
+      normalizePendingPhoto({
+        id: p.id,
+        blob: p.blob,
+        thumbBlob: p.thumbBlob,
+        caption: p.caption,
+        includeInReport: p.includeInReport,
+        exifTimestamp: p.exifTimestamp,
+        orientationCorrected: p.orientationCorrected,
+        annotations: p.annotations ?? [],
+      }),
+    )
 }
 
 /**
