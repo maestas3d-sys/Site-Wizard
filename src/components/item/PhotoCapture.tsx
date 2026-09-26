@@ -115,7 +115,13 @@ export function PhotoCapture({ photos, onChange, onMarkup }: PhotoCaptureProps) 
             label itself once its hidden file input gets focus back after
             the native camera/photo picker closes — a leftover outline on
             top of (not part of) the tile's own intentional dashed border. */}
-        <label className="flex h-24 w-24 flex-none cursor-pointer flex-col items-center justify-center gap-0.5 rounded border-[1.5px] border-dashed border-wr-blue-800 font-body text-[13px] font-semibold text-wr-blue-800 focus-within:outline-none">
+        {/* text-center: items-center only centers each label's flex-column
+            children as boxes — a short one-line span like "+" is already as
+            narrow as its glyph, so that alone looks centered, but a span
+            that wraps (like "Choose photos" here) stretches nearly the full
+            tile width, and text-align defaults to left within it, leaving
+            the wrapped words pinned to the left edge under a centered "+". */}
+        <label className="flex h-24 w-24 flex-none cursor-pointer flex-col items-center justify-center gap-0.5 rounded border-[1.5px] border-dashed border-wr-blue-800 text-center font-body text-[13px] font-semibold text-wr-blue-800 focus-within:outline-none">
           <span aria-hidden="true">+</span>
           <span>Take photo</span>
           <input
@@ -129,7 +135,7 @@ export function PhotoCapture({ photos, onChange, onMarkup }: PhotoCaptureProps) 
             }}
           />
         </label>
-        <label className="flex h-24 w-24 flex-none cursor-pointer flex-col items-center justify-center gap-0.5 rounded border-[1.5px] border-dashed border-wr-blue-800 font-body text-[13px] font-semibold text-wr-blue-800 focus-within:outline-none">
+        <label className="flex h-24 w-24 flex-none cursor-pointer flex-col items-center justify-center gap-0.5 rounded border-[1.5px] border-dashed border-wr-blue-800 text-center font-body text-[13px] font-semibold text-wr-blue-800 focus-within:outline-none">
           <span aria-hidden="true">+</span>
           <span>Choose photos</span>
           <input
