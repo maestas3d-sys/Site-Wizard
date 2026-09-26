@@ -127,3 +127,31 @@ export function translateShape(shape: PhotoAnnotation, dx: number, dy: number): 
 export function moveHandle(shape: PhotoAnnotation, handle: ShapeHandle, point: Point): PhotoAnnotation {
   return handle === 'start' ? { ...shape, x1: point.x, y1: point.y } : { ...shape, x2: point.x, y2: point.y }
 }
+
+interface CoverTransform {
+  /** Screen (CSS) px per image (natural) px. */
+  scale: number
+  /** Screen-space offset of the image's top-left corner, negative where cropped. */
+  offsetX: number
+  offsetY: number
+}
+
+/** The markup surface renders the photo with `object-cover` and its SVG
+ * overlay with `preserveAspectRatio="xMidYMid slice"` — both crop-to-cover
+ * rather than stretch. A naive per-axis (boxPx / boxSize) * naturalSize
+ * mapping between screen and image space is only correct when the photo's
+ * aspect ratio happens to exactly match the display box's; for any other
+ * ratio (portrait phone photos in this box's wider frame, the common case)
+ * it drifts further from correct the farther a point is from the box's
+ * center — which is exactly what made grabbing a handle unreliable. This
+ * computes the real uniform "cover" scale and centering offset so screen
+ * coordinates convert to and from image space correctly everywhere in the
+ * box, not just at its center. */
+export function coverTransform(box: { width: number; height: number }, naturalWidth: number, naturalHeight: number): CoverTransform {
+  const scale = Math.max(box.width / naturalWidth, box.height / naturalHeight)
+  return {
+    scale,
+    offsetX: (box.width - naturalWidth * scale) / 2,
+    offsetY: (box.height - naturalHeight * scale) / 2,
+  }
+}
