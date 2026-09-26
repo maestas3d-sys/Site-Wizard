@@ -27,8 +27,8 @@ interface PhotoMarkupProps {
  * for moving. Generous touch targets — precise finger placement on a small
  * arrow/circle stroke is unrealistic. Converted to image-space units at
  * gesture start via the live display-to-natural-pixel scale. */
-const HANDLE_HIT_CLIENT_PX = 22
-const BODY_HIT_CLIENT_PX = 16
+const HANDLE_HIT_CLIENT_PX = 26
+const BODY_HIT_CLIENT_PX = 20
 
 type DragState =
   | { mode: 'handle'; index: number; handle: ShapeHandle }
@@ -64,21 +64,20 @@ export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
     }
   }
 
-  /** CSS-px touch tolerances converted to this photo's image-space units,
-   * via the surface's current display-to-natural-pixel scale — a finger's
+  /** This photo's current display-to-natural-pixel scale — a finger's
    * effective precision is a constant number of screen pixels, not image
-   * pixels, so this must be recomputed from the live rect at gesture start,
-   * not baked in as a fixed image-space constant. */
-  function hitTolerances(e: ReactPointerEvent<SVGSVGElement>): { handle: number; body: number } {
+   * pixels, so every CSS-px tolerance below must be converted through this
+   * at gesture start, not baked in as a fixed image-space constant. */
+  function displayScale(e: ReactPointerEvent<SVGSVGElement>): number {
     const rect = e.currentTarget.getBoundingClientRect()
-    const scale = dimensions ? dimensions.width / rect.width : 1
-    return { handle: HANDLE_HIT_CLIENT_PX * scale, body: BODY_HIT_CLIENT_PX * scale }
+    return dimensions ? dimensions.width / rect.width : 1
   }
 
   function handlePointerDown(e: ReactPointerEvent<SVGSVGElement>) {
     e.currentTarget.setPointerCapture(e.pointerId)
     const p = toImageSpace(e)
-    const tolerance = hitTolerances(e)
+    const scale = displayScale(e)
+    const tolerance = { handle: HANDLE_HIT_CLIENT_PX * scale, body: BODY_HIT_CLIENT_PX * scale }
 
     if (selectedIndex !== null) {
       const shape = shapes[selectedIndex]
@@ -122,13 +121,14 @@ export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
     setDraft({ ...draft, x2: p.x, y2: p.y })
   }
 
-  function handlePointerUp() {
+  function handlePointerUp(e: ReactPointerEvent<SVGSVGElement>) {
     if (dragRef.current) {
       dragRef.current = null
       return
     }
     if (!draft) return
-    const longEnough = Math.hypot(draft.x2 - draft.x1, draft.y2 - draft.y1) > MARKUP_MIN_DRAG_PX
+    const minDrag = MARKUP_MIN_DRAG_PX * displayScale(e)
+    const longEnough = Math.hypot(draft.x2 - draft.x1, draft.y2 - draft.y1) > minDrag
     if (longEnough) {
       setShapes((s) => [...s, draft])
       // Select the shape just drawn so its handles appear immediately —
@@ -149,10 +149,23 @@ export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
     setSelectedIndex(null)
   }
 
+  /** Removes just the selected shape — the fix for a stray, unintended
+   * arrow/circle: rather than Undo (which only removes the most recently
+   * drawn one, whichever that is) or Clear (which removes everything),
+   * select the specific offending shape and delete only it. */
+  function handleDeleteSelected() {
+    if (selectedIndex === null) return
+    setShapes((s) => s.filter((_, i) => i !== selectedIndex))
+    setSelectedIndex(null)
+  }
+
   const displayShapes = draft ? [...shapes, draft] : shapes
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-wr-blue-900">
+    // z-[60]: above every other fixed layer in the app, including the
+    // PwaStatus corner notification (z-50) — a full-screen modal should
+    // never have its own controls blocked by an incidental toast.
+    <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-wr-blue-900">
       <div
         className="flex items-center justify-between px-4 pb-3.5 text-white"
         style={{ paddingTop: 'max(0.875rem, env(safe-area-inset-top))' }}
@@ -187,30 +200,40 @@ export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
 
       <p className="mx-4 mt-3.5 text-center text-[13px] text-wr-taupe-200">
         {selectedIndex !== null
-          ? 'Drag a handle to resize, or drag the shape to move it.'
-          : 'Drag on the photo to draw. Tap a shape to adjust it.'}
+          ? 'Drag a handle to resize, drag the shape to move it, or delete it below.'
+          : 'Drag on the photo to draw. Tap a shape to adjust or delete it.'}
       </p>
 
       <div
         className="mt-auto flex flex-col gap-3 overflow-y-auto bg-wr-blue-800 p-4"
         style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
       >
-        <div className="flex gap-2">
-          {(['arrow', 'circle'] as const).map((t) => {
-            const selected = tool === t
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTool(t)}
-                className="min-h-[52px] flex-1 rounded border border-wr-taupe-500 font-body text-[15px] font-semibold"
-                style={selected ? { background: '#fff', color: '#003D4C' } : { background: 'transparent', color: '#fff' }}
-              >
-                {t === 'arrow' ? 'Arrow' : 'Circle'}
-              </button>
-            )
-          })}
-        </div>
+        {selectedIndex !== null ? (
+          <button
+            type="button"
+            onClick={handleDeleteSelected}
+            className="min-h-[52px] w-full rounded border border-wr-danger bg-wr-danger font-body text-[15px] font-semibold text-white"
+          >
+            Delete this shape
+          </button>
+        ) : (
+          <div className="flex gap-2">
+            {(['arrow', 'circle'] as const).map((t) => {
+              const selected = tool === t
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTool(t)}
+                  className="min-h-[52px] flex-1 rounded border border-wr-taupe-500 font-body text-[15px] font-semibold"
+                  style={selected ? { background: '#fff', color: '#003D4C' } : { background: 'transparent', color: '#fff' }}
+                >
+                  {t === 'arrow' ? 'Arrow' : 'Circle'}
+                </button>
+              )
+            })}
+          </div>
+        )}
         <div className="flex items-center gap-2.5">
           {MARKUP_COLORS.map((c) => (
             <button
