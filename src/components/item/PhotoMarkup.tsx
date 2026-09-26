@@ -1,6 +1,15 @@
-import { useEffect, useMemo, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { PendingPhoto } from '../../db/photos'
-import { MARKUP_COLORS, MARKUP_DEFAULT_COLOR, MARKUP_MIN_DRAG_PX } from '../../lib/photoMarkup'
+import {
+  MARKUP_COLORS,
+  MARKUP_DEFAULT_COLOR,
+  MARKUP_MIN_DRAG_PX,
+  hitTestHandle,
+  hitTestShapeBody,
+  moveHandle,
+  translateShape,
+  type ShapeHandle,
+} from '../../lib/photoMarkup'
 import { useImageDimensions } from '../../lib/useImageDimensions'
 import type { PhotoAnnotation } from '../../types/photo'
 import { PhotoAnnotationsOverlay } from './PhotoAnnotationsOverlay'
@@ -12,6 +21,18 @@ interface PhotoMarkupProps {
   onCancel: () => void
   onDone: (annotations: PhotoAnnotation[]) => void
 }
+
+/** A drag onto a handle within this many CSS px grabs it for resizing; a
+ * drag onto the shape's body (but not a handle) within this many grabs it
+ * for moving. Generous touch targets — precise finger placement on a small
+ * arrow/circle stroke is unrealistic. Converted to image-space units at
+ * gesture start via the live display-to-natural-pixel scale. */
+const HANDLE_HIT_CLIENT_PX = 22
+const BODY_HIT_CLIENT_PX = 16
+
+type DragState =
+  | { mode: 'handle'; index: number; handle: ShapeHandle }
+  | { mode: 'move'; index: number; origin: PhotoAnnotation; start: { x: number; y: number } }
 
 /**
  * Full-screen markup overlay (design handoff, screen 7) — draws arrows and
@@ -31,6 +52,8 @@ export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
   const [color, setColor] = useState(MARKUP_DEFAULT_COLOR)
   const [shapes, setShapes] = useState<PhotoAnnotation[]>(photo.annotations)
   const [draft, setDraft] = useState<PhotoAnnotation | null>(null)
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const dragRef = useRef<DragState | null>(null)
 
   function toImageSpace(e: ReactPointerEvent<SVGSVGElement>): { x: number; y: number } {
     if (!dimensions) return { x: 0, y: 0 }
@@ -41,30 +64,99 @@ export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
     }
   }
 
+  /** CSS-px touch tolerances converted to this photo's image-space units,
+   * via the surface's current display-to-natural-pixel scale — a finger's
+   * effective precision is a constant number of screen pixels, not image
+   * pixels, so this must be recomputed from the live rect at gesture start,
+   * not baked in as a fixed image-space constant. */
+  function hitTolerances(e: ReactPointerEvent<SVGSVGElement>): { handle: number; body: number } {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const scale = dimensions ? dimensions.width / rect.width : 1
+    return { handle: HANDLE_HIT_CLIENT_PX * scale, body: BODY_HIT_CLIENT_PX * scale }
+  }
+
   function handlePointerDown(e: ReactPointerEvent<SVGSVGElement>) {
     e.currentTarget.setPointerCapture(e.pointerId)
     const p = toImageSpace(e)
+    const tolerance = hitTolerances(e)
+
+    if (selectedIndex !== null) {
+      const shape = shapes[selectedIndex]
+      const handle = hitTestHandle(p, shape, tolerance.handle)
+      if (handle) {
+        dragRef.current = { mode: 'handle', index: selectedIndex, handle }
+        return
+      }
+      if (hitTestShapeBody(p, shape, tolerance.body)) {
+        dragRef.current = { mode: 'move', index: selectedIndex, origin: shape, start: p }
+        return
+      }
+    }
+
+    for (let i = shapes.length - 1; i >= 0; i--) {
+      if (hitTestShapeBody(p, shapes[i], tolerance.body)) {
+        setSelectedIndex(i)
+        dragRef.current = { mode: 'move', index: i, origin: shapes[i], start: p }
+        return
+      }
+    }
+
+    setSelectedIndex(null)
     setDraft({ kind: tool, x1: p.x, y1: p.y, x2: p.x, y2: p.y, color })
   }
 
   function handlePointerMove(e: ReactPointerEvent<SVGSVGElement>) {
-    if (!draft) return
     const p = toImageSpace(e)
+    const drag = dragRef.current
+    if (drag) {
+      if (drag.mode === 'handle') {
+        setShapes((s) => s.map((shape, i) => (i === drag.index ? moveHandle(shape, drag.handle, p) : shape)))
+      } else {
+        const dx = p.x - drag.start.x
+        const dy = p.y - drag.start.y
+        setShapes((s) => s.map((shape, i) => (i === drag.index ? translateShape(drag.origin, dx, dy) : shape)))
+      }
+      return
+    }
+    if (!draft) return
     setDraft({ ...draft, x2: p.x, y2: p.y })
   }
 
   function handlePointerUp() {
+    if (dragRef.current) {
+      dragRef.current = null
+      return
+    }
     if (!draft) return
     const longEnough = Math.hypot(draft.x2 - draft.x1, draft.y2 - draft.y1) > MARKUP_MIN_DRAG_PX
-    if (longEnough) setShapes((s) => [...s, draft])
+    if (longEnough) {
+      setShapes((s) => [...s, draft])
+      // Select the shape just drawn so its handles appear immediately —
+      // a rough first drag rarely lands right, and dragging a handle right
+      // after drawing is much easier than undoing and redrawing from scratch.
+      setSelectedIndex(shapes.length)
+    }
     setDraft(null)
+  }
+
+  function handleUndo() {
+    setShapes((s) => s.slice(0, -1))
+    setSelectedIndex(null)
+  }
+
+  function handleClear() {
+    setShapes([])
+    setSelectedIndex(null)
   }
 
   const displayShapes = draft ? [...shapes, draft] : shapes
 
   return (
-    <div className="absolute inset-0 z-10 flex flex-col bg-wr-blue-900">
-      <div className="flex items-center justify-between p-3.5 px-4 text-white">
+    <div className="fixed inset-0 z-40 flex flex-col overflow-hidden bg-wr-blue-900">
+      <div
+        className="flex items-center justify-between px-4 pb-3.5 text-white"
+        style={{ paddingTop: 'max(0.875rem, env(safe-area-inset-top))' }}
+      >
         <button type="button" onClick={onCancel} className="min-h-11 font-body text-[15px] font-medium text-wr-taupe-200">
           Cancel
         </button>
@@ -85,6 +177,7 @@ export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
             naturalWidth={dimensions.width}
             naturalHeight={dimensions.height}
             annotations={displayShapes}
+            selectedIndex={selectedIndex ?? undefined}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -93,10 +186,15 @@ export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
       </div>
 
       <p className="mx-4 mt-3.5 text-center text-[13px] text-wr-taupe-200">
-        Drag on the photo to draw. Markup is saved as a copy; the original stays untouched.
+        {selectedIndex !== null
+          ? 'Drag a handle to resize, or drag the shape to move it.'
+          : 'Drag on the photo to draw. Tap a shape to adjust it.'}
       </p>
 
-      <div className="mt-auto flex flex-col gap-3 bg-wr-blue-800 p-4 pb-6">
+      <div
+        className="mt-auto flex flex-col gap-3 overflow-y-auto bg-wr-blue-800 p-4"
+        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+      >
         <div className="flex gap-2">
           {(['arrow', 'circle'] as const).map((t) => {
             const selected = tool === t
@@ -126,7 +224,7 @@ export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
           ))}
           <button
             type="button"
-            onClick={() => setShapes((s) => s.slice(0, -1))}
+            onClick={handleUndo}
             disabled={shapes.length === 0}
             className="ml-auto min-h-11 rounded border border-wr-taupe-500 px-3.5 font-body text-sm font-medium text-white disabled:opacity-40"
           >
@@ -134,7 +232,7 @@ export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
           </button>
           <button
             type="button"
-            onClick={() => setShapes([])}
+            onClick={handleClear}
             disabled={shapes.length === 0}
             className="min-h-11 rounded border border-wr-taupe-500 px-3.5 font-body text-sm font-medium text-white disabled:opacity-40"
           >
