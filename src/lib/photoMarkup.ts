@@ -67,3 +67,56 @@ export function computeCircleGeometry(shape: PhotoAnnotation): CircleGeometry {
     ry: Math.abs(shape.y2 - shape.y1) / 2,
   }
 }
+
+type Point = { x: number; y: number }
+
+function distance(a: Point, b: Point): number {
+  return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
+function distanceToSegment(p: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const lengthSquared = dx * dx + dy * dy
+  if (lengthSquared === 0) return distance(p, a)
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSquared))
+  return distance(p, { x: a.x + t * dx, y: a.y + t * dy })
+}
+
+/** A shape's two endpoints double as its drag handles once selected — "start"
+ * is (x1,y1), "end" is (x2,y2), for both arrows and circles (whose corners
+ * define its bounding box). Existing shapes can be resized by dragging
+ * either one, not just redrawn from scratch. */
+export type ShapeHandle = 'start' | 'end'
+
+/** Which handle of `shape`, if any, `point` (image space) is within `radius`
+ * of — checked before body-drag so a handle always wins over a move. */
+export function hitTestHandle(point: Point, shape: PhotoAnnotation, radius: number): ShapeHandle | null {
+  if (distance(point, { x: shape.x1, y: shape.y1 }) <= radius) return 'start'
+  if (distance(point, { x: shape.x2, y: shape.y2 }) <= radius) return 'end'
+  return null
+}
+
+/** Whether `point` falls on/inside `shape` closely enough to grab it for a
+ * move — a line-distance test for arrows, an interior test (with a little
+ * tolerance added to the radii, so the edge is forgiving too) for circles. */
+export function hitTestShapeBody(point: Point, shape: PhotoAnnotation, tolerance: number): boolean {
+  if (shape.kind === 'arrow') {
+    return distanceToSegment(point, { x: shape.x1, y: shape.y1 }, { x: shape.x2, y: shape.y2 }) <= tolerance
+  }
+  const c = computeCircleGeometry(shape)
+  const rx = c.rx + tolerance
+  const ry = c.ry + tolerance
+  if (rx <= 0 || ry <= 0) return distance(point, { x: c.cx, y: c.cy }) <= tolerance
+  const nx = (point.x - c.cx) / rx
+  const ny = (point.y - c.cy) / ry
+  return nx * nx + ny * ny <= 1
+}
+
+export function translateShape(shape: PhotoAnnotation, dx: number, dy: number): PhotoAnnotation {
+  return { ...shape, x1: shape.x1 + dx, y1: shape.y1 + dy, x2: shape.x2 + dx, y2: shape.y2 + dy }
+}
+
+export function moveHandle(shape: PhotoAnnotation, handle: ShapeHandle, point: Point): PhotoAnnotation {
+  return handle === 'start' ? { ...shape, x1: point.x, y1: point.y } : { ...shape, x2: point.x, y2: point.y }
+}

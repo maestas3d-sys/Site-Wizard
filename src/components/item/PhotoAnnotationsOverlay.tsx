@@ -8,6 +8,9 @@ interface PhotoAnnotationsOverlayProps {
   naturalWidth: number
   naturalHeight: number
   annotations: PhotoAnnotation[]
+  /** Index into `annotations` of the shape currently selected for editing
+   * (markup overlay only) — draws its two endpoints as draggable handles. */
+  selectedIndex?: number
   /** Non-interactive by default (thumbnails); pass handlers to make it the
    * live drawing surface (the markup overlay). */
   onPointerDown?: (e: ReactPointerEvent<SVGSVGElement>) => void
@@ -24,6 +27,7 @@ export function PhotoAnnotationsOverlay({
   naturalWidth,
   naturalHeight,
   annotations,
+  selectedIndex,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -31,6 +35,8 @@ export function PhotoAnnotationsOverlay({
 }: PhotoAnnotationsOverlayProps) {
   const strokeWidth = computeMarkupStrokeWidth(naturalWidth)
   const interactive = !!(onPointerDown || onPointerMove || onPointerUp)
+  const selectedShape = selectedIndex !== undefined ? annotations[selectedIndex] : undefined
+  const handleRadius = strokeWidth * 2.2
 
   return (
     <svg
@@ -78,6 +84,26 @@ export function PhotoAnnotationsOverlay({
           </g>
         )
       })}
+      {selectedShape && (
+        <>
+          <circle
+            cx={selectedShape.x1}
+            cy={selectedShape.y1}
+            r={handleRadius}
+            fill="#fff"
+            stroke={selectedShape.color}
+            strokeWidth={strokeWidth * 0.6}
+          />
+          <circle
+            cx={selectedShape.x2}
+            cy={selectedShape.y2}
+            r={handleRadius}
+            fill="#fff"
+            stroke={selectedShape.color}
+            strokeWidth={strokeWidth * 0.6}
+          />
+        </>
+      )}
     </svg>
   )
 }
