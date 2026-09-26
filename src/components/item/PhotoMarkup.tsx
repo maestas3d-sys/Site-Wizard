@@ -49,6 +49,18 @@ type DragState =
 export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
   const dimensions = useImageDimensions(photo.blob)
   const imageUrl = useSafeObjectUrl(photo.blob)
+  // A blob can be a real Blob (useSafeObjectUrl is satisfied) but still
+  // contain bytes the browser can't decode as an image — only the <img>
+  // element's own decoder can catch that, via onError. Reset the failure
+  // flag when the url changes by adjusting state during render (no effect
+  // cascade), same pattern as PhotoThumb.tsx.
+  const [decodeFailed, setDecodeFailed] = useState(false)
+  const [lastImageUrl, setLastImageUrl] = useState(imageUrl)
+  if (imageUrl !== lastImageUrl) {
+    setLastImageUrl(imageUrl)
+    setDecodeFailed(false)
+  }
+  const photoLoaded = imageUrl && !decodeFailed
   const [tool, setTool] = useState<Tool>('arrow')
   const [color, setColor] = useState(MARKUP_DEFAULT_COLOR)
   const [shapes, setShapes] = useState<PhotoAnnotation[]>(photo.annotations)
@@ -188,9 +200,14 @@ export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
       </div>
 
       <div className="relative mx-4 mt-6 overflow-hidden rounded-sm bg-wr-taupe-500" style={{ aspectRatio: '358 / 268' }}>
-        {imageUrl ? (
+        {photoLoaded ? (
           <>
-            <img src={imageUrl} alt="Site photo" className="absolute inset-0 h-full w-full object-cover" />
+            <img
+              src={imageUrl}
+              alt="Site photo"
+              className="absolute inset-0 h-full w-full object-cover"
+              onError={() => setDecodeFailed(true)}
+            />
             {dimensions && (
               <PhotoAnnotationsOverlay
                 naturalWidth={dimensions.width}
