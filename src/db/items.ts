@@ -41,6 +41,12 @@ export async function updateItem(id: string, draft: ItemDraft): Promise<void> {
   await db.items.update(id, { ...draft, updatedAt: Date.now() })
 }
 
+/** Small in-place field updates (the swipe-row quick-type change) that
+ * don't need a full ItemDraft round-trip through the edit form. */
+export async function patchItem(id: string, patch: Partial<Item>): Promise<void> {
+  await db.items.update(id, { ...patch, updatedAt: Date.now() })
+}
+
 /**
  * Saves an item, its photos, and its voice memo together, in one
  * transaction: photos and the audio note are reconciled against the

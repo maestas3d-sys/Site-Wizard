@@ -17,8 +17,15 @@ export function emptyVisitDraft(): VisitDraft {
     engineerTitle: '',
     engineerCredential: '',
     nextObservation: '',
+    closing: 'work-in-progress',
     status: 'draft',
   }
+}
+
+/** Small in-place field updates (closing variant, status) that don't need a
+ * full VisitDraft round-trip through a form. */
+export async function patchVisit(id: string, patch: Partial<Visit>): Promise<void> {
+  await db.visits.update(id, patch)
 }
 
 export async function listVisitsByProject(projectId: string): Promise<Visit[]> {

@@ -1,5 +1,100 @@
 @import 'tailwindcss';
 
+/* Wiseman + Rohy brand fonts, self-hosted for offline use (see README
+   "Fonts") — Futura BT is the firm's own licensed file; Roboto Slab and
+   Cormorant Garamond are Google Fonts substitutes for the wordmark's
+   slab-serif and light wide-tracked serif, fetched once as the latin
+   subset only (this app is English-only) rather than loaded live, so
+   headings and eyebrows still render correctly with no network. */
+/* Relative paths, not /fonts/... — this app deploys from a /Site-Wizard/
+   subpath on GitHub Pages (see vite.config.ts), and an absolute path here
+   would 404 there exactly like the report template did before it was
+   fixed to go through Vite's base config. A relative url() from a file
+   Vite processes (this stylesheet) goes through the normal asset
+   pipeline instead, which is base-aware automatically. */
+@font-face {
+  font-family: 'Futura BT';
+  src: url('./assets/fonts/futura-book.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Futura BT';
+  src: url('./assets/fonts/futura-book-italic.ttf') format('truetype');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Futura BT';
+  src: url('./assets/fonts/futura-medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Futura BT';
+  src: url('./assets/fonts/futura-bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Roboto Slab';
+  src: url('./assets/fonts/roboto-slab-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cormorant Garamond';
+  src: url('./assets/fonts/cormorant-garamond-600.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  /* Wiseman + Rohy brand palette (design handoff, "Direction 3"). Prefixed
+     wr- so it can't collide with (or be confused for) Tailwind's own blue/
+     brown scales — this app uses none of those anymore, but the names are
+     common enough to be worth keeping unambiguous. */
+  --color-wr-blue-900: #00323e;
+  --color-wr-blue-800: #003d4c;
+  --color-wr-blue-700: #0a5468;
+  --color-wr-blue-600: #1d6f85;
+  --color-wr-blue-100: #e3edf0;
+  --color-wr-blue-50: #f2f7f8;
+  --color-wr-brown-900: #40331e;
+  --color-wr-brown-700: #59462a;
+  --color-wr-brown-500: #8a7048;
+  --color-wr-brown-100: #eee7db;
+  --color-wr-brown-50: #f8f4ec;
+  --color-wr-taupe-700: #7c765f;
+  --color-wr-taupe-500: #9c957b;
+  --color-wr-taupe-200: #dcd8ca;
+  --color-wr-taupe-100: #ece9e0;
+  --color-wr-ink-900: #1c2225;
+  --color-wr-ink-700: #3d4649;
+  --color-wr-ink-500: #6b7477;
+  --color-wr-ink-300: #a4abad;
+  --color-wr-ink-100: #d8dcdd;
+  --color-wr-paper: #faf8f4;
+  --color-wr-success: #3f7d5c;
+  --color-wr-danger: #a13d33;
+  /* "In progress" / blank-field notice tint — a warmer, lighter warning
+     than the base --warning token in the source design system, specific
+     to this UI's own notices. */
+  --color-wr-warning-bg: #f5ecd9;
+  --color-wr-warning-text: #8a5f16;
+  --color-wr-warning-border: #e6d3a8;
+
+  --font-body: 'Futura BT', 'Century Gothic', -apple-system, 'Segoe UI', sans-serif;
+  --font-heading: 'Roboto Slab', Georgia, serif;
+  --font-eyebrow: 'Cormorant Garamond', Georgia, serif;
+}
+
 :root {
   color-scheme: light;
 }
@@ -17,6 +112,21 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: env(safe-area-inset-left, 0px);
   /* Direct sunlight / gloved-hand use downstream (capture screens) needs high
-     contrast and no light-gray-on-white; this base keeps body text dark. */
-  @apply bg-slate-100 text-slate-900 antialiased;
+     contrast and no light-gray-on-white; paper is warm off-white, not gray. */
+  background: var(--color-wr-paper);
+  color: var(--color-wr-ink-700);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Native-iOS-style vertical scroll areas (the design's "Scroll areas are
+   vertical only... and hide their scrollbars"), applied via this utility
+   rather than repeating both properties everywhere. */
+.scroll-y-clean {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.scroll-y-clean::-webkit-scrollbar {
+  display: none;
 }

@@ -6,10 +6,12 @@ interface ItemTypeChipsProps {
   onChange: (value: ItemType) => void
 }
 
-/** Single-select chips, large enough for a gloved thumb. */
+/** 2-column grid, large enough for a gloved thumb. Selected fills with the
+ * type's own color and a matching 2px border; unselected stays a plain
+ * outline so the grid doesn't compete with the photos/observation above it. */
 export function ItemTypeChips({ value, onChange }: ItemTypeChipsProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="grid grid-cols-2 gap-2">
       {ITEM_TYPES.map((type) => {
         const selected = type.value === value
         return (
@@ -17,11 +19,12 @@ export function ItemTypeChips({ value, onChange }: ItemTypeChipsProps) {
             key={type.value}
             type="button"
             onClick={() => onChange(type.value)}
-            className={`min-h-12 rounded-full px-4 py-2 text-sm font-semibold transition ${
+            style={
               selected
-                ? `${type.colorClasses} ring-2 ring-offset-1 ring-current`
-                : 'bg-slate-100 text-slate-500'
-            }`}
+                ? { background: type.bg, color: type.text, border: `2px solid ${type.text}` }
+                : { background: '#fff', color: '#6B7477', border: '1px solid #DCD8CA' }
+            }
+            className="min-h-12 rounded font-body text-sm font-semibold"
           >
             {type.label}
           </button>

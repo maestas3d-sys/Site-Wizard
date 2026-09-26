@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { ItemTypeChips } from '../components/item/ItemTypeChips'
 import { PhotoCapture } from '../components/item/PhotoCapture'
-import { VoiceMemoRecorder } from '../components/item/VoiceMemoRecorder'
+import { PhotoMarkup } from '../components/item/PhotoMarkup'
+import { VoiceMemoMicControl, VoiceMemoPlaybackRow } from '../components/item/VoiceMemoRecorder'
+import { AppBar } from '../components/ui/AppBar'
 import { Button } from '../components/ui/Button'
-import { TextAreaField } from '../components/ui/Field'
+import { ScreenLayout } from '../components/ui/ScreenLayout'
+import { Toast } from '../components/ui/Toast'
 import { type PendingAudioNote, loadPendingAudioNote } from '../db/audioNotes'
 import { db } from '../db/db'
 import {
@@ -18,7 +21,10 @@ import {
 } from '../db/itemDrafts'
 import { type ItemDraft, deleteItem, emptyItemDraft, saveItem } from '../db/items'
 import { type PendingPhoto, loadPendingPhotos } from '../db/photos'
+import { useToast } from '../lib/useToast'
+import { useVoiceMemo } from '../lib/useVoiceMemo'
 import type { Item } from '../types/item'
+import type { PhotoAnnotation } from '../types/photo'
 
 const AUTOSAVE_DEBOUNCE_MS = 400
 
@@ -34,7 +40,9 @@ function hasContent(draft: ItemDraft, photos: PendingPhoto[], audioNote: Pending
 
 interface ItemFormProps {
   visitId: string
+  visitNumber: number
   itemId: string | undefined
+  seq: number
   initial: ItemDraft
   initialPhotos: PendingPhoto[]
   initialAudioNote: PendingAudioNote | null
@@ -42,20 +50,32 @@ interface ItemFormProps {
 }
 
 /**
- * The screen that matters (§4.3) — body text, item type, photos, and the
- * optional voice memo. Grid reference, element/level, detail references,
- * and measurements were dropped per feedback: multiple typed inputs per
- * item was tedious in the field, and none of them ever made it into the
- * generated report anyway — any of that goes in the body text now, if the
- * engineer needs it there at all. Autosaves a recovery snapshot to Dexie on
- * every field change (§8): a deliberate navigation away clears it, but a
- * crash or force-quit never runs that cleanup, so the draft is still there
- * to recover next time this form opens.
+ * The screen that matters (§4.3) — photos first, then the observation
+ * (with hold-to-dictate built into the field itself), then item type.
+ * Grid reference, element/level, detail references, and measurements were
+ * dropped per feedback: multiple typed inputs per item was tedious in the
+ * field, and none of them ever made it into the generated report anyway —
+ * any of that goes in the body text now, if the engineer needs it there at
+ * all. Autosaves a recovery snapshot to Dexie on every field change (§8,
+ * now covering photo markup too since it lives on the same PendingPhoto
+ * objects): a deliberate navigation away clears it, but a crash or
+ * force-quit never runs that cleanup, so the draft is still there to
+ * recover next time this form opens.
  */
-function ItemForm({ visitId, itemId, initial, initialPhotos, initialAudioNote, initialDraftSnapshot }: ItemFormProps) {
+function ItemForm({
+  visitId,
+  visitNumber,
+  itemId,
+  seq,
+  initial,
+  initialPhotos,
+  initialAudioNote,
+  initialDraftSnapshot,
+}: ItemFormProps) {
   const navigate = useNavigate()
   const isNew = !itemId
   const currentDraftKey = itemId ? editItemDraftKey(itemId) : newItemDraftKey(visitId)
+  const { toastText, showToast } = useToast()
 
   const [draft, setDraft] = useState<ItemDraft>(initialDraftSnapshot?.draft ?? initial)
   const [photos, setPhotos] = useState<PendingPhoto[]>(initialDraftSnapshot?.photos ?? initialPhotos)
@@ -63,6 +83,7 @@ function ItemForm({ visitId, itemId, initial, initialPhotos, initialAudioNote, i
     initialDraftSnapshot?.audioNote ?? initialAudioNote,
   )
   const [draftRecovered, setDraftRecovered] = useState(initialDraftSnapshot !== null)
+  const [markupPhoto, setMarkupPhoto] = useState<PendingPhoto | null>(null)
   // What was actually in Dexie when this form mounted — reconcilePhotos and
   // reconcileAudioNote need this to know what the user removed. Always the
   // *real* persisted state, never the recovered draft's own photos/audio.
@@ -70,6 +91,8 @@ function ItemForm({ visitId, itemId, initial, initialPhotos, initialAudioNote, i
   const originalAudioId = useRef(initialAudioNote?.id)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  const voice = useVoiceMemo(audioNote, setAudioNote)
 
   // Debounced autosave of a recovery snapshot. Skips (and clears any
   // earlier snapshot) once the form is back to empty — typed something,
@@ -106,6 +129,12 @@ function ItemForm({ visitId, itemId, initial, initialPhotos, initialAudioNote, i
     setDraftRecovered(false)
   }
 
+  function handleMarkupDone(annotations: PhotoAnnotation[]) {
+    if (!markupPhoto) return
+    setPhotos((current) => current.map((p) => (p.id === markupPhoto.id ? { ...p, annotations } : p)))
+    setMarkupPhoto(null)
+  }
+
   async function persist(): Promise<Item> {
     const saved = await saveItem(
       visitId,
@@ -134,6 +163,7 @@ function ItemForm({ visitId, itemId, initial, initialPhotos, initialAudioNote, i
     setSaving(true)
     try {
       await persist()
+      showToast(`Item #${seq} saved. Ready for the next one.`)
       setDraft(emptyItemDraft())
       setPhotos([])
       originalPhotoIds.current = []
@@ -160,73 +190,93 @@ function ItemForm({ visitId, itemId, initial, initialPhotos, initialAudioNote, i
   const canSave = draft.bodyText.trim().length > 0
 
   return (
-    <div className="space-y-4">
-      {draftRecovered && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          <span>Recovered an unsaved draft from earlier.</span>
-          <button type="button" onClick={handleDiscardDraft} className="font-semibold underline">
-            Discard
-          </button>
-        </div>
-      )}
-
-      <TextAreaField
-        label="Body text"
-        hint="The item as it will appear in the report — this is never generated or auto-edited. Include grid/element/detail references here if needed."
-        rows={6}
-        value={draft.bodyText}
-        onChange={(e) => patch({ bodyText: e.target.value })}
-        placeholder="Observed hairline cracking at..."
-      />
-
-      <div>
-        <span className="mb-1 block text-sm font-semibold text-slate-700">Item type</span>
-        <ItemTypeChips value={draft.itemType} onChange={(itemType) => patch({ itemType })} />
-      </div>
-
-      <div>
-        <span className="mb-1 block text-sm font-semibold text-slate-700">Photos</span>
-        <PhotoCapture photos={photos} onChange={setPhotos} />
-      </div>
-
-      <VoiceMemoRecorder value={audioNote} onChange={setAudioNote} />
-
-      {/* Fixed, not sticky: with the form this short, "sticky" often never
-          has anything to stick to (page content can be shorter than the
-          viewport), leaving these buttons in normal flow instead of pinned
-          — where they can land right under the PWA-status corner toast.
-          Fixed always pins to the real viewport bottom regardless of
-          content height; the page wrapper's pb-24 keeps the last field
-          clear of it. */}
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-slate-100/95 backdrop-blur">
-        <div className="mx-auto flex max-w-2xl flex-wrap gap-3 p-4">
-          {isNew ? (
+    <>
+      <ScreenLayout
+        appBar={<AppBar backLabel={`Field Report #${visitNumber}`} backTo={`/visits/${visitId}`} title={`Item #${seq}`} />}
+        footer={
+          isNew ? (
             <>
-              <Button onClick={handleSaveAndNext} disabled={saving || !canSave} className="flex-1">
-                {saving ? 'Saving…' : 'Save & Add Another'}
+              <Button onClick={handleSaveAndNext} disabled={saving || !canSave} className="min-h-[52px] flex-1">
+                {saving ? 'Saving…' : 'Save and add another'}
               </Button>
               <Button
                 variant="secondary"
                 onClick={handleSaveAndClose}
                 disabled={saving || !canSave}
-                className="flex-1"
+                className="min-h-[52px] flex-1"
               >
-                Save & Close
+                Save and close
               </Button>
             </>
           ) : (
             <>
-              <Button onClick={handleSaveAndClose} disabled={saving || !canSave} className="flex-1">
+              <Button onClick={handleSaveAndClose} disabled={saving || !canSave} className="min-h-[52px] flex-[2]">
                 {saving ? 'Saving…' : 'Save changes'}
               </Button>
-              <Button variant="danger" onClick={handleDelete} disabled={deleting}>
+              <Button variant="danger" onClick={handleDelete} disabled={deleting} className="min-h-[52px] flex-1">
                 {deleting ? 'Deleting…' : 'Delete'}
               </Button>
             </>
+          )
+        }
+      >
+        <div className="flex flex-col gap-5 p-4">
+          {draftRecovered && (
+            <div className="flex items-center justify-between gap-3 rounded border border-wr-warning-border bg-wr-warning-bg p-3 text-sm text-wr-brown-900">
+              <span>Recovered an unsaved draft from earlier.</span>
+              <button type="button" onClick={handleDiscardDraft} className="font-semibold underline">
+                Discard
+              </button>
+            </div>
           )}
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-baseline justify-between">
+              <span className="font-eyebrow text-sm font-semibold tracking-[0.14em] text-wr-brown-700 uppercase">
+                Photos
+              </span>
+              <span className="text-xs text-wr-ink-500">
+                {photos.length > 0 ? 'Tap a photo to mark up' : 'Photos are optional'}
+              </span>
+            </div>
+            <PhotoCapture photos={photos} onChange={setPhotos} onMarkup={setMarkupPhoto} />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="font-eyebrow text-sm font-semibold tracking-[0.14em] text-wr-brown-700 uppercase">
+              Observation
+            </span>
+            <div className="relative">
+              <textarea
+                rows={5}
+                value={draft.bodyText}
+                onChange={(e) => patch({ bodyText: e.target.value })}
+                placeholder="Observed hairline cracking at..."
+                className="w-full resize-none rounded border border-wr-taupe-200 bg-white p-3 pb-16 font-body text-base leading-normal text-wr-ink-900 placeholder:text-wr-ink-500 focus:border-wr-blue-800 focus:outline-none focus:ring-2 focus:ring-wr-blue-600/30"
+              />
+              <div className="absolute bottom-2.5 left-2 right-2">
+                <VoiceMemoMicControl voice={voice} hasMemo={!!audioNote} />
+              </div>
+            </div>
+            {audioNote && !voice.recording && (
+              <VoiceMemoPlaybackRow value={audioNote} onDelete={() => setAudioNote(null)} />
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="font-eyebrow text-sm font-semibold tracking-[0.14em] text-wr-brown-700 uppercase">
+              Item type
+            </span>
+            <ItemTypeChips value={draft.itemType} onChange={(itemType) => patch({ itemType })} />
+          </div>
         </div>
-      </div>
-    </div>
+      </ScreenLayout>
+
+      {markupPhoto && (
+        <PhotoMarkup photo={markupPhoto} onCancel={() => setMarkupPhoto(null)} onDone={handleMarkupDone} />
+      )}
+      <Toast text={toastText} />
+    </>
   )
 }
 
@@ -238,7 +288,10 @@ export function ItemFormPage() {
   const visitId = isNew ? newVisitId : existingItem?.visitId
 
   const visit = useLiveQuery(() => (visitId ? db.visits.get(visitId) : undefined), [visitId])
-  const project = useLiveQuery(() => (visit ? db.projects.get(visit.projectId) : undefined), [visit])
+  const existingVisitItemCount = useLiveQuery(
+    async () => (isNew && visitId ? db.items.where('visitId').equals(visitId).count() : undefined),
+    [isNew, visitId],
+  )
   const initialPhotos = useLiveQuery(
     () => (isNew ? [] : existingItem ? loadPendingPhotos(existingItem.photoIds) : undefined),
     [isNew, existingItem],
@@ -263,68 +316,59 @@ export function ItemFormPage() {
   }, [currentDraftKey])
 
   const ready = isNew
-    ? visit !== undefined && project !== undefined && recoverableDraft !== undefined
+    ? visit !== undefined && existingVisitItemCount !== undefined && recoverableDraft !== undefined
     : existingItem !== undefined &&
       visit !== undefined &&
-      project !== undefined &&
       initialPhotos !== undefined &&
       initialAudioNote !== undefined &&
       recoverableDraft !== undefined
 
-  return (
-    <div className="mx-auto max-w-2xl p-4 pb-24">
-      <header className="mb-6 flex items-center gap-3">
-        <Link
-          to={visit ? `/visits/${visit.id}` : '/'}
-          className="text-2xl text-slate-400 hover:text-slate-600"
-          aria-label="Back to visit"
-        >
-          ←
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            {isNew ? 'New Item' : `Item #${existingItem?.sequenceNumber ?? ''}`}
-          </h1>
-          {project && visit && (
-            <p className="text-sm text-slate-500">
-              {project.name} — Field Report #{visit.reportNumber}
-            </p>
-          )}
-        </div>
-      </header>
+  if (!ready) {
+    return (
+      <ScreenLayout appBar={<AppBar backLabel="Back" backTo="/" title="Loading…" />}>
+        <p className="p-4 text-wr-ink-500">Loading…</p>
+      </ScreenLayout>
+    )
+  }
 
-      {!ready && <p className="text-slate-500">Loading…</p>}
+  if (isNew && visit && existingVisitItemCount !== undefined && recoverableDraft !== undefined) {
+    return (
+      <ItemForm
+        visitId={visit.id}
+        visitNumber={visit.reportNumber}
+        itemId={undefined}
+        seq={existingVisitItemCount + 1}
+        initial={emptyItemDraft()}
+        initialPhotos={[]}
+        initialAudioNote={null}
+        initialDraftSnapshot={recoverableDraft}
+      />
+    )
+  }
 
-      {ready && isNew && visit && project && recoverableDraft !== undefined && (
-        <ItemForm
-          visitId={visit.id}
-          itemId={undefined}
-          initial={emptyItemDraft()}
-          initialPhotos={[]}
-          initialAudioNote={null}
-          initialDraftSnapshot={recoverableDraft}
-        />
-      )}
+  if (
+    !isNew &&
+    existingItem &&
+    visit &&
+    initialPhotos &&
+    initialAudioNote !== undefined &&
+    recoverableDraft !== undefined
+  ) {
+    return (
+      // Keyed so navigating between two items' edit forms remounts fresh.
+      <ItemForm
+        key={existingItem.id}
+        visitId={visit.id}
+        visitNumber={visit.reportNumber}
+        itemId={existingItem.id}
+        seq={existingItem.sequenceNumber}
+        initial={toItemDraft(existingItem)}
+        initialPhotos={initialPhotos}
+        initialAudioNote={initialAudioNote}
+        initialDraftSnapshot={recoverableDraft}
+      />
+    )
+  }
 
-      {ready &&
-        !isNew &&
-        existingItem &&
-        visit &&
-        project &&
-        initialPhotos &&
-        initialAudioNote !== undefined &&
-        recoverableDraft !== undefined && (
-          // Keyed so navigating between two items' edit forms remounts fresh.
-          <ItemForm
-            key={existingItem.id}
-            visitId={visit.id}
-            itemId={existingItem.id}
-            initial={toItemDraft(existingItem)}
-            initialPhotos={initialPhotos}
-            initialAudioNote={initialAudioNote}
-            initialDraftSnapshot={recoverableDraft}
-          />
-        )}
-    </div>
-  )
+  return null
 }

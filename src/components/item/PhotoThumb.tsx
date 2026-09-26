@@ -14,5 +14,5 @@ export function PhotoThumb({ blob, className }: PhotoThumbProps) {
   const url = useMemo(() => URL.createObjectURL(blob), [blob])
   useEffect(() => () => URL.revokeObjectURL(url), [url])
 
-  return <img src={url} alt="Site photo" className={`object-cover ${className ?? ''}`} />
+  return <img src={url} alt="Site photo" className={`h-full w-full object-cover ${className ?? ''}`} />
 }

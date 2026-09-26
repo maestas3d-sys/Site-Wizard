@@ -24,16 +24,19 @@ export default defineConfig({
       // — it must be precached or report generation breaks offline. Workbox's
       // default globPatterns don't include .docx, so it's added explicitly;
       // this pattern already covers everything under public/ (icons,
-      // favicon, the template) once copied into the build output.
+      // favicon, the template) once copied into the build output. ttf/otf/
+      // woff2 cover the self-hosted brand fonts (Futura BT, Roboto Slab,
+      // Cormorant Garamond) — headings and eyebrows would silently fall
+      // back to the platform font offline without them.
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,docx}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,docx,ttf,otf,woff2}'],
       },
       manifest: {
         name: 'Site Wizard — Field Reports',
         short_name: 'Site Wizard',
         description: 'Offline field capture and report generation for structural site visits.',
-        theme_color: '#0a5b6b', // sampled from the firm's actual logo mark, not approximated
-        background_color: '#f1f5f9',
+        theme_color: '#003D4C', // W+R brand primary (design handoff, Direction 3)
+        background_color: '#faf8f4',
         display: 'standalone',
         start_url: base,
         scope: base,
