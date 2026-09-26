@@ -1,4 +1,4 @@
-import type { Photo } from '../types/photo'
+import type { Photo, PhotoAnnotation } from '../types/photo'
 import { db } from './db'
 
 /**
@@ -15,6 +15,7 @@ export interface PendingPhoto {
   includeInReport: boolean
   exifTimestamp?: number
   orientationCorrected: boolean
+  annotations: PhotoAnnotation[]
 }
 
 /** Loads an existing item's photos as pending records, in photoIds order, for editing. */
@@ -31,6 +32,7 @@ export async function loadPendingPhotos(photoIds: string[]): Promise<PendingPhot
       includeInReport: p.includeInReport,
       exifTimestamp: p.exifTimestamp,
       orientationCorrected: p.orientationCorrected,
+      annotations: p.annotations ?? [],
     }))
 }
 
@@ -68,6 +70,7 @@ export async function reconcilePhotos(
           orientationCorrected: p.orientationCorrected,
           includeInReport: p.includeInReport,
           orderIndex: index,
+          annotations: p.annotations,
         }
         return db.photos.put(record)
       }),

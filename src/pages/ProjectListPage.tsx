@@ -1,59 +1,64 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
+import { LogoBar } from '../components/ui/LogoBar'
 import { db } from '../db/db'
+import { formatDateShort } from '../lib/reportDates'
+import type { Visit } from '../types/visit'
+
+function visitsMeta(visits: Visit[]): string {
+  if (visits.length === 0) return 'No visits yet'
+  const latest = visits.reduce((a, b) => (b.reportNumber > a.reportNumber ? b : a))
+  const count = visits.length === 1 ? '1 field report' : `${visits.length} field reports`
+  return `${count} · last visit ${formatDateShort(latest.visitDate)}`
+}
 
 export function ProjectListPage() {
   const projects = useLiveQuery(() => db.projects.orderBy('createdAt').reverse().toArray(), [])
+  const allVisits = useLiveQuery(() => db.visits.toArray(), [])
+
+  const visitsByProject = new Map<string, Visit[]>()
+  allVisits?.forEach((v) => {
+    const list = visitsByProject.get(v.projectId)
+    if (list) list.push(v)
+    else visitsByProject.set(v.projectId, [v])
+  })
 
   return (
-    <div className="pb-24">
-      <header className="bg-gradient-to-br from-[#10727f] via-[#0a5b6b] to-[#073e48] px-4 pb-5 pt-5 text-white shadow-md">
-        <div className="mx-auto max-w-2xl">
-          <div className="inline-flex rounded-xl bg-white px-3.5 py-2.5 shadow-sm">
-            <img
-              src={`${import.meta.env.BASE_URL}logo/wr-full-logo.png`}
-              alt="Wiseman+Rohy Structural Engineers"
-              className="h-7 w-auto"
-            />
-          </div>
-          <p className="mt-2.5 text-xs font-semibold tracking-[0.18em] text-teal-100">FIELD REPORTS</p>
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold leading-tight">Projects</h1>
-            <Link
-              to="/projects/new"
-              className="min-h-12 rounded-lg bg-white px-4 py-3 text-base font-semibold text-[#0a5b6b] shadow-sm active:bg-teal-50"
-            >
-              + New Project
-            </Link>
-          </div>
-        </div>
-      </header>
+    <div className="pb-4">
+      <LogoBar />
+      <div className="flex items-center justify-between gap-3 bg-wr-blue-800 px-4 pb-5 pt-[18px]">
+        <span className="font-heading text-2xl font-semibold text-white">Projects</span>
+        <Link
+          to="/projects/new"
+          className="flex min-h-12 items-center rounded bg-wr-brown-700 px-4 font-body text-[15px] font-semibold text-white shadow-[0_1px_2px_rgba(0,0,0,.08)]"
+        >
+          + New project
+        </Link>
+      </div>
 
-      <div className="mx-auto max-w-2xl p-4">
-        {projects === undefined && <p className="text-slate-500">Loading…</p>}
+      <div className="flex flex-col gap-2 p-4">
+        {projects === undefined && <p className="text-wr-ink-500">Loading…</p>}
 
         {projects?.length === 0 && (
-          <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-slate-500">
+          <p className="rounded border border-dashed border-wr-taupe-500 bg-white p-6 text-center text-wr-ink-500">
             No projects yet. Create one to get started.
           </p>
         )}
 
-        <ul className="space-y-2">
-          {projects?.map((p) => (
-            <li key={p.id}>
-              <Link
-                to={`/projects/${p.id}`}
-                className="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm active:bg-slate-50"
-              >
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="font-semibold text-slate-900">{p.name || 'Untitled project'}</span>
-                  <span className="shrink-0 text-sm text-slate-500">{p.jobNumber}</span>
-                </div>
-                <div className="text-sm text-slate-500">{p.location || 'No location set'}</div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {projects?.map((p) => (
+          <Link
+            key={p.id}
+            to={`/projects/${p.id}`}
+            className="flex flex-col gap-1 rounded border border-wr-taupe-200 bg-white p-3.5"
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="font-body text-base font-bold text-wr-blue-900">{p.name || 'Untitled project'}</span>
+              <span className="shrink-0 text-[13px] text-wr-ink-500">{p.jobNumber}</span>
+            </div>
+            <div className="text-sm text-wr-ink-700">{p.location || 'No location set'}</div>
+            <div className="text-xs text-wr-ink-500">{visitsMeta(visitsByProject.get(p.id) ?? [])}</div>
+          </Link>
+        ))}
       </div>
     </div>
   )

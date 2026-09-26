@@ -28,6 +28,16 @@ export function formatReportDate(iso: string): string {
   })
 }
 
+/** "Sep 18" — project/visit list meta lines ("3 field reports · last visit Sep 18"). */
+export function formatDateShort(iso: string): string {
+  return parseLocalDate(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+/** "Sep 18, 2026" — the Visit items screen's subtitle line. */
+export function formatDateMedium(iso: string): string {
+  return parseLocalDate(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 /** "Tuesday, September 30th, 2025" — used in the opening sentence. */
 export function formatVisitDateLong(iso: string): string {
   const date = parseLocalDate(iso)

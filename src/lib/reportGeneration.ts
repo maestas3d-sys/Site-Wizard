@@ -5,31 +5,19 @@ import { listItemsByVisit } from '../db/items'
 import type { Item } from '../types/item'
 import type { Photo } from '../types/photo'
 import type { Project } from '../types/project'
-import type { Visit } from '../types/visit'
+import type { ClosingVariant, Visit } from '../types/visit'
 import { applyTwoSpaceRule } from './houseStyle'
+import { CLOSING_STATEMENTS, buildOpeningStatement } from './reportContent'
 import { injectPhotos } from './reportImages'
-import { formatReportDate, formatVisitDateLong } from './reportDates'
+import { formatReportDate } from './reportDates'
 import { buildGeneralStateBlockXml, buildItemsBlockXml, buildPresentBlockXml } from './reportTemplateBlocks'
+
+export type { ClosingVariant }
 
 // import.meta.env.BASE_URL is Vite's configured `base`, always ending in
 // "/" — a hardcoded leading "/" here would 404 under GitHub Pages, which
 // serves this app from a /Site-Wizard/ subpath rather than the root.
 const TEMPLATE_URL = `${import.meta.env.BASE_URL}templates/field-report-template.docx`
-
-export type ClosingVariant = 'conforms' | 'work-in-progress'
-
-const CLOSING_STATEMENTS: Record<ClosingVariant, string> = {
-  conforms:
-    'Generally, the work observed appeared to conform to the construction documents, except as noted above.',
-  'work-in-progress':
-    'Generally, the work observed appeared to conform to the construction documents, although it was still a work-in-progress.',
-}
-
-function buildOpeningStatement(visit: Visit): string {
-  const purpose = visit.purpose.trim().replace(/\.+$/, '')
-  const sentence = `On ${formatVisitDateLong(visit.visitDate)}, the undersigned visited the site to ${purpose}.`
-  return applyTwoSpaceRule(sentence)
-}
 
 function buildFilename(project: Project, visit: Visit): string {
   const safeName = project.name.replace(/[\\/:*?"<>|]+/g, ' ').trim()
@@ -41,7 +29,7 @@ function buildFilename(project: Project, visit: Visit): string {
 /** Photos in report order: grouped by the item they belong to (in item
  * order), then by their position within that item. Only photos flagged
  * includeInReport are considered. */
-function orderPhotosForReport(items: Item[], photos: Photo[]): Photo[] {
+export function orderPhotosForReport(items: Item[], photos: Photo[]): Photo[] {
   const itemOrder = new Map(items.map((item, index) => [item.id, index]))
   return photos
     .filter((p) => p.includeInReport)
@@ -58,7 +46,7 @@ function orderPhotosForReport(items: Item[], photos: Photo[]): Photo[] {
  * the same order injectPhotos labels them ("Photo #1", "Photo #2", …) —
  * `orderedPhotos` must already be in report order (orderPhotosForReport's
  * output), which is what keeps each item's numbers contiguous. */
-function buildPhotoNumbersByItem(orderedPhotos: Photo[]): Map<string, number[]> {
+export function buildPhotoNumbersByItem(orderedPhotos: Photo[]): Map<string, number[]> {
   const map = new Map<string, number[]>()
   orderedPhotos.forEach((photo, index) => {
     if (photo.itemId === undefined) return

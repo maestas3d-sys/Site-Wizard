@@ -1,7 +1,9 @@
 import type { InputHTMLAttributes, ReactNode, TextareaHTMLAttributes } from 'react'
 
+// 16px input text is deliberate, not just the brand spec — anything
+// smaller makes iOS Safari zoom the viewport on focus.
 const inputClasses =
-  'w-full rounded-lg border border-slate-300 bg-white px-3 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-200'
+  'w-full rounded border border-wr-taupe-200 bg-white px-3 text-base text-wr-ink-900 font-body placeholder:text-wr-ink-500 focus:border-wr-blue-800 focus:outline-none focus:ring-2 focus:ring-wr-blue-600/30'
 
 interface FieldWrapperProps {
   label: string
@@ -12,9 +14,11 @@ interface FieldWrapperProps {
 function FieldWrapper({ label, hint, children }: FieldWrapperProps) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-semibold text-slate-700">{label}</span>
+      <span className="mb-1.5 block font-eyebrow text-sm font-semibold tracking-[0.14em] text-wr-brown-700 uppercase">
+        {label}
+      </span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
+      {hint && <span className="mt-1 block text-xs text-wr-ink-500">{hint}</span>}
     </label>
   )
 }
@@ -24,7 +28,7 @@ type TextFieldProps = Omit<FieldWrapperProps, 'children'> & InputHTMLAttributes<
 export function TextField({ label, hint, ...inputProps }: TextFieldProps) {
   return (
     <FieldWrapper label={label} hint={hint}>
-      <input {...inputProps} className={inputClasses} />
+      <input {...inputProps} className={`h-12 ${inputClasses}`} />
     </FieldWrapper>
   )
 }
@@ -35,7 +39,7 @@ type TextAreaFieldProps = Omit<FieldWrapperProps, 'children'> &
 export function TextAreaField({ label, hint, rows = 4, ...textareaProps }: TextAreaFieldProps) {
   return (
     <FieldWrapper label={label} hint={hint}>
-      <textarea rows={rows} {...textareaProps} className={inputClasses} />
+      <textarea rows={rows} {...textareaProps} className={`resize-none py-3 leading-normal ${inputClasses}`} />
     </FieldWrapper>
   )
 }

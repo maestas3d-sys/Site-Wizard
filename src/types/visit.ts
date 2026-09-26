@@ -5,6 +5,8 @@ export interface Attendee {
 
 export type VisitStatus = 'draft' | 'complete'
 
+export type ClosingVariant = 'work-in-progress' | 'conforms'
+
 export interface Visit {
   id: string
   projectId: string
@@ -18,6 +20,9 @@ export interface Visit {
   engineerTitle: string // "Principal"
   engineerCredential: string // "SE"
   nextObservation: string // "Prior to pour-strip concrete pour. Tentatively 10/20/25."
+  // Persisted so it survives leaving and returning to Report Preview —
+  // previously a local `useState` on the preview panel, reset every visit.
+  closing: ClosingVariant
   status: VisitStatus
   createdAt: number
 }

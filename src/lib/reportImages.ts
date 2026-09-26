@@ -1,5 +1,6 @@
 import type PizZip from 'pizzip'
 import type { Photo } from '../types/photo'
+import { computeArrowGeometry, computeCircleGeometry, computeMarkupStrokeWidth } from './photoMarkup'
 import { escapeXml } from './xmlEscape'
 
 /**
@@ -37,6 +38,66 @@ async function decodeDimensions(blob: Blob): Promise<{ width: number; height: nu
   }
 }
 
+/** Draws a photo's markup (arrows/circles) onto a fresh canvas copy of it,
+ * using the exact same geometry math as the live overlay (PhotoAnnotationsOverlay)
+ * so what an engineer drew in the field is what shows up in the report —
+ * never the original blob, which stays untouched in Dexie regardless of
+ * how this report generation goes. Returns the burned-in JPEG plus its
+ * (unchanged) natural dimensions, so the caller doesn't need a second
+ * decode just to size the drawing. */
+async function rasterizeAnnotations(
+  photo: Photo,
+): Promise<{ arrayBuffer: ArrayBuffer; width: number; height: number }> {
+  const bitmap = await createImageBitmap(photo.blob)
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Canvas 2D context unavailable')
+    ctx.drawImage(bitmap, 0, 0)
+
+    const strokeWidth = computeMarkupStrokeWidth(bitmap.width)
+    ctx.lineCap = 'round'
+    for (const shape of photo.annotations ?? []) {
+      ctx.strokeStyle = shape.color
+      ctx.fillStyle = shape.color
+      ctx.lineWidth = strokeWidth
+      if (shape.kind === 'circle') {
+        const c = computeCircleGeometry(shape)
+        ctx.beginPath()
+        // A degenerate (near-zero) radius is a valid ellipse arg but draws
+        // nothing useful — floor it slightly so a tiny circle still shows.
+        ctx.ellipse(c.cx, c.cy, Math.max(c.rx, 0.5), Math.max(c.ry, 0.5), 0, 0, Math.PI * 2)
+        ctx.stroke()
+      } else {
+        const arrow = computeArrowGeometry(shape, strokeWidth)
+        ctx.beginPath()
+        ctx.moveTo(shape.x1, shape.y1)
+        ctx.lineTo(arrow.lineEnd.x, arrow.lineEnd.y)
+        ctx.stroke()
+        ctx.beginPath()
+        ctx.moveTo(arrow.tip.x, arrow.tip.y)
+        ctx.lineTo(arrow.headBase[0].x, arrow.headBase[0].y)
+        ctx.lineTo(arrow.headBase[1].x, arrow.headBase[1].y)
+        ctx.closePath()
+        ctx.fill()
+      }
+    }
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('canvas.toBlob returned null'))),
+        'image/jpeg',
+        0.9,
+      )
+    })
+    return { arrayBuffer: await blob.arrayBuffer(), width: bitmap.width, height: bitmap.height }
+  } finally {
+    bitmap.close()
+  }
+}
+
 function buildDrawingXml(relId: string, docPrId: number, widthPx: number, heightPx: number): string {
   const cx = widthPx * EMU_PER_PIXEL
   const cy = heightPx * EMU_PER_PIXEL
@@ -68,11 +129,14 @@ export async function injectPhotos(zip: PizZip, photos: Photo[]): Promise<void> 
   const paragraphs: string[] = []
   for (let i = 0; i < photos.length; i++) {
     const photo = photos[i]
-    const [arrayBuffer, dims] = await Promise.all([
-      photo.blob.arrayBuffer(),
-      decodeDimensions(photo.blob),
-    ])
-    const { width, height } = computeDisplaySize(dims.width, dims.height)
+    const hasMarkup = (photo.annotations?.length ?? 0) > 0
+    const { arrayBuffer, width: naturalWidth, height: naturalHeight } = hasMarkup
+      ? await rasterizeAnnotations(photo)
+      : await (async () => {
+          const [buf, dims] = await Promise.all([photo.blob.arrayBuffer(), decodeDimensions(photo.blob)])
+          return { arrayBuffer: buf, width: dims.width, height: dims.height }
+        })()
+    const { width, height } = computeDisplaySize(naturalWidth, naturalHeight)
 
     const relId = `rIdReportPhoto${i + 1}`
     const mediaName = `reportPhoto${i + 1}.jpeg`

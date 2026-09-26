@@ -2,20 +2,71 @@ import { useState } from 'react'
 import type { PendingPhoto } from '../../db/photos'
 import { newId } from '../../lib/id'
 import { processPhotoFile } from '../../lib/photoProcessing'
+import { useImageDimensions } from '../../lib/useImageDimensions'
+import { PhotoAnnotationsOverlay } from './PhotoAnnotationsOverlay'
 import { PhotoThumb } from './PhotoThumb'
 
 interface PhotoCaptureProps {
   photos: PendingPhoto[]
   onChange: (next: PendingPhoto[]) => void
+  /** Opens the full-screen markup overlay for this photo — owned by the
+   * parent (Item Capture) since it needs to sit above the whole form. */
+  onMarkup: (photo: PendingPhoto) => void
+}
+
+function PhotoThumbCard({
+  photo,
+  onMarkup,
+  onRemove,
+}: {
+  photo: PendingPhoto
+  onMarkup: () => void
+  onRemove: () => void
+}) {
+  // The overlay's viewBox must match the space annotations were drawn in —
+  // the full photo, not this thumbnail — even though the visible image
+  // here is the smaller thumbBlob; matching aspect ratios keep them aligned.
+  const dimensions = useImageDimensions(photo.blob)
+  const hasMarkup = photo.annotations.length > 0
+
+  return (
+    <div className="relative h-24 w-24 flex-none">
+      <button type="button" onClick={onMarkup} className="block h-24 w-24 overflow-hidden rounded">
+        <div className="relative h-full w-full">
+          <PhotoThumb blob={photo.thumbBlob} />
+          {hasMarkup && dimensions && (
+            <PhotoAnnotationsOverlay
+              naturalWidth={dimensions.width}
+              naturalHeight={dimensions.height}
+              annotations={photo.annotations}
+            />
+          )}
+          {hasMarkup && (
+            <span className="absolute bottom-1 left-1 rounded-sm bg-wr-blue-800 px-[5px] py-px text-[11px] font-semibold text-white">
+              Marked up
+            </span>
+          )}
+        </div>
+      </button>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label="Remove photo"
+        className="absolute -right-2 -top-2 flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 border-wr-paper bg-wr-ink-900 text-[13px] font-bold text-white"
+      >
+        ×
+      </button>
+    </div>
+  )
 }
 
 /**
  * Camera capture and gallery import, multiple per item (§4.3). Every file
  * is downscaled, orientation-corrected, and thumbnailed on selection —
  * before this item is ever saved, so what's shown here is exactly what
- * will be stored.
+ * will be stored. Tapping a photo opens it for markup (arrows/circles).
  */
-export function PhotoCapture({ photos, onChange }: PhotoCaptureProps) {
+export function PhotoCapture({ photos, onChange, onMarkup }: PhotoCaptureProps) {
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -28,7 +79,7 @@ export function PhotoCapture({ photos, onChange }: PhotoCaptureProps) {
     for (const file of files) {
       try {
         const processed = await processPhotoFile(file)
-        newPhotos.push({ id: newId(), ...processed, caption: '', includeInReport: true })
+        newPhotos.push({ id: newId(), ...processed, caption: '', includeInReport: true, annotations: [] })
       } catch (err) {
         console.error('Failed to process photo:', file.name, err)
       }
@@ -49,28 +100,20 @@ export function PhotoCapture({ photos, onChange }: PhotoCaptureProps) {
   }
 
   return (
-    <div className="space-y-3">
-      {photos.length > 0 && (
-        <div className="flex flex-wrap gap-3">
-          {photos.map((photo) => (
-            <div key={photo.id} className="relative">
-              <PhotoThumb blob={photo.thumbBlob} className="h-20 w-20 rounded-lg" />
-              <button
-                type="button"
-                onClick={() => removePhoto(photo.id)}
-                className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-xs font-bold text-white shadow"
-                aria-label="Remove photo"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+    <div className="space-y-2">
+      <div className="scroll-y-clean flex gap-2.5 overflow-x-auto overflow-y-hidden py-0.5">
+        {photos.map((photo) => (
+          <PhotoThumbCard
+            key={photo.id}
+            photo={photo}
+            onMarkup={() => onMarkup(photo)}
+            onRemove={() => removePhoto(photo.id)}
+          />
+        ))}
 
-      <div className="flex flex-wrap gap-3">
-        <label className="flex min-h-12 min-w-32 flex-1 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 active:bg-slate-50">
-          📷 Take Photo
+        <label className="flex h-24 w-24 flex-none cursor-pointer flex-col items-center justify-center gap-0.5 rounded border-[1.5px] border-dashed border-wr-blue-800 font-body text-[13px] font-semibold text-wr-blue-800">
+          <span aria-hidden="true">+</span>
+          <span>Take photo</span>
           <input
             type="file"
             accept="image/*"
@@ -82,8 +125,9 @@ export function PhotoCapture({ photos, onChange }: PhotoCaptureProps) {
             }}
           />
         </label>
-        <label className="flex min-h-12 min-w-32 flex-1 cursor-pointer items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 active:bg-slate-50">
-          🖼️ Choose Photos
+        <label className="flex h-24 w-24 flex-none cursor-pointer flex-col items-center justify-center gap-0.5 rounded border-[1.5px] border-dashed border-wr-blue-800 font-body text-[13px] font-semibold text-wr-blue-800">
+          <span aria-hidden="true">+</span>
+          <span>Choose photos</span>
           <input
             type="file"
             accept="image/*"
@@ -97,8 +141,8 @@ export function PhotoCapture({ photos, onChange }: PhotoCaptureProps) {
         </label>
       </div>
 
-      {processing && <p className="text-sm text-slate-500">Processing…</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {processing && <p className="text-sm text-wr-ink-500">Processing…</p>}
+      {error && <p className="text-sm text-wr-danger">{error}</p>}
     </div>
   )
 }
