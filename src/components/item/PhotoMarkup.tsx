@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import type { PendingPhoto } from '../../db/photos'
 import {
   MARKUP_COLORS,
@@ -11,6 +11,7 @@ import {
   type ShapeHandle,
 } from '../../lib/photoMarkup'
 import { useImageDimensions } from '../../lib/useImageDimensions'
+import { useSafeObjectUrl } from '../../lib/useSafeObjectUrl'
 import type { PhotoAnnotation } from '../../types/photo'
 import { PhotoAnnotationsOverlay } from './PhotoAnnotationsOverlay'
 
@@ -46,8 +47,7 @@ type DragState =
  */
 export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
   const dimensions = useImageDimensions(photo.blob)
-  const imageUrl = useMemo(() => URL.createObjectURL(photo.blob), [photo.blob])
-  useEffect(() => () => URL.revokeObjectURL(imageUrl), [imageUrl])
+  const imageUrl = useSafeObjectUrl(photo.blob)
   const [tool, setTool] = useState<Tool>('arrow')
   const [color, setColor] = useState(MARKUP_DEFAULT_COLOR)
   const [shapes, setShapes] = useState<PhotoAnnotation[]>(photo.annotations)
@@ -184,17 +184,25 @@ export function PhotoMarkup({ photo, onCancel, onDone }: PhotoMarkupProps) {
       </div>
 
       <div className="relative mx-4 mt-6 overflow-hidden rounded-sm bg-wr-taupe-500" style={{ aspectRatio: '358 / 268' }}>
-        <img src={imageUrl} alt="Site photo" className="absolute inset-0 h-full w-full object-cover" />
-        {dimensions && (
-          <PhotoAnnotationsOverlay
-            naturalWidth={dimensions.width}
-            naturalHeight={dimensions.height}
-            annotations={displayShapes}
-            selectedIndex={selectedIndex ?? undefined}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-          />
+        {imageUrl ? (
+          <>
+            <img src={imageUrl} alt="Site photo" className="absolute inset-0 h-full w-full object-cover" />
+            {dimensions && (
+              <PhotoAnnotationsOverlay
+                naturalWidth={dimensions.width}
+                naturalHeight={dimensions.height}
+                annotations={displayShapes}
+                selectedIndex={selectedIndex ?? undefined}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+              />
+            )}
+          </>
+        ) : (
+          <div className="flex h-full w-full items-center justify-center p-4 text-center font-body text-sm text-wr-ink-100">
+            This photo couldn't be loaded, so it can't be marked up.
+          </div>
         )}
       </div>
 

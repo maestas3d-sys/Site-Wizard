@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react'
 import type { PendingAudioNote } from '../../db/audioNotes'
 import { formatDuration } from '../../lib/audioRecording'
+import { useSafeObjectUrl } from '../../lib/useSafeObjectUrl'
 import type { VoiceMemoState } from '../../lib/useVoiceMemo'
 
 /**
@@ -38,8 +38,7 @@ export function VoiceMemoMicControl({ voice, hasMemo }: { voice: VoiceMemoState;
 }
 
 export function VoiceMemoPlaybackRow({ value, onDelete }: { value: PendingAudioNote; onDelete: () => void }) {
-  const url = useMemo(() => URL.createObjectURL(value.blob), [value.blob])
-  useEffect(() => () => URL.revokeObjectURL(url), [url])
+  const url = useSafeObjectUrl(value.blob)
 
   return (
     <div className="flex flex-col gap-1.5 rounded border border-wr-taupe-200 bg-white p-2 pl-3">
@@ -54,7 +53,11 @@ export function VoiceMemoPlaybackRow({ value, onDelete }: { value: PendingAudioN
           Delete
         </button>
       </div>
-      <audio controls src={url} className="h-8 w-full" />
+      {url ? (
+        <audio controls src={url} className="h-8 w-full" />
+      ) : (
+        <p className="text-xs text-wr-danger">This memo couldn't be loaded.</p>
+      )}
     </div>
   )
 }
