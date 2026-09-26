@@ -1,7 +1,7 @@
 import type { PendingAudioNote } from './audioNotes'
 import { db } from './db'
 import type { ItemDraft } from './items'
-import type { PendingPhoto } from './photos'
+import { normalizePendingPhoto, type PendingPhoto } from './photos'
 
 /**
  * A full in-progress Item Capture snapshot — everything ItemForm holds in
@@ -37,7 +37,12 @@ export async function saveItemDraftSnapshot(snapshot: Omit<ItemDraftRecord, 'upd
 }
 
 export async function loadItemDraftSnapshot(key: string): Promise<ItemDraftRecord | undefined> {
-  return db.itemDrafts.get(key)
+  const record = await db.itemDrafts.get(key)
+  if (!record) return record
+  // A draft snapshot autosaved before a field (e.g. annotations) existed on
+  // PendingPhoto is stored without it — normalize on the way back out, same
+  // as loadPendingPhotos does for the real photos table.
+  return { ...record, photos: record.photos.map(normalizePendingPhoto) }
 }
 
 export async function clearItemDraftSnapshot(key: string): Promise<void> {
